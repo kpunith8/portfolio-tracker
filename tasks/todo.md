@@ -9,7 +9,7 @@ Each item is a small independently verifiable slice. Refer to the [plan](plan.md
 ## Foundation
 
 - [ ] Bootstrap Next.js, TypeScript, Prisma Client, Prisma Migrate, PostgreSQL and lucide-react. Verify migrations, local development and production build.
-- [ ] Add Kinde sign-in and user-scoped queries. Verify two users cannot see or mutate each other's data.
+- [ ] Add Kinde sign-in and user-scoped queries. Basic sign-in and a protected dashboard are scaffolded; user-scoped persistence is pending. Verify two users cannot see or mutate each other's data.
 - [ ] Create five core tables and database constraints; verify migration and tenant ownership tests.
 
 ## Investments
@@ -29,7 +29,7 @@ Each item is a small independently verifiable slice. Refer to the [plan](plan.md
 
 ## User experience and import
 
-- [ ] Build tabbed investments and responsive dashboard with clear price timestamps and coverage. Verify user totals reconcile with holdings.
+- [ ] Build tabbed investments and responsive dashboard with clear price timestamps and coverage. A sample-data dashboard exists; live data and investment tabs are pending. Verify user totals reconcile with holdings.
 - [ ] Download CSV template and preview validation without writes. Test malformed rows, unsupported tickers and duplicates.
 - [ ] Commit imports atomically and idempotently. Test rollback, duplicate references and concurrent sales.
 - [ ] Verify mobile, keyboard, contrast, reduced motion, chart alternatives and empty/error states.

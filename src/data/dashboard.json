@@ -1,0 +1,79 @@
+{
+  "asOf": "2026-10-30",
+  "history": [
+    { "date": "2025-11-01", "value": 940000, "invested": 900000 },
+    { "date": "2025-12-01", "value": 965000, "invested": 915000 },
+    { "date": "2026-01-01", "value": 1010000, "invested": 950000 },
+    { "date": "2026-02-01", "value": 994000, "invested": 965000 },
+    { "date": "2026-03-01", "value": 1038000, "invested": 980000 },
+    { "date": "2026-04-01", "value": 1065000, "invested": 1000000 },
+    { "date": "2026-05-01", "value": 1051000, "invested": 1010000 },
+    { "date": "2026-06-01", "value": 1105000, "invested": 1040000 },
+    { "date": "2026-07-01", "value": 1130000, "invested": 1060000 },
+    { "date": "2026-08-01", "value": 1178000, "invested": 1080000 },
+    { "date": "2026-09-01", "value": 1165000, "invested": 1095000 },
+    { "date": "2026-10-30", "value": 1248500, "invested": 1110000 }
+  ],
+  "holdings": [
+    {
+      "name": "HDFC Bank",
+      "symbol": "HDFCBANK",
+      "type": "Stocks",
+      "value": 310000,
+      "cost": 270000
+    },
+    {
+      "name": "Infosys",
+      "symbol": "INFY",
+      "type": "Stocks",
+      "value": 240000,
+      "cost": 210000
+    },
+    {
+      "name": "Nifty 50 Index Fund",
+      "symbol": "Index fund",
+      "type": "Mutual funds",
+      "value": 348500,
+      "cost": 320000
+    },
+    {
+      "name": "Gold ETF",
+      "symbol": "GOLDBEES",
+      "type": "Gold",
+      "value": 150000,
+      "cost": 130000
+    },
+    {
+      "name": "Fixed deposit",
+      "symbol": "Manual valuation",
+      "type": "Debt & other",
+      "value": 200000,
+      "cost": 180000
+    }
+  ],
+  "activity": [
+    {
+      "type": "Buy",
+      "name": "Infosys",
+      "detail": "10 shares",
+      "date": "2026-10-24",
+      "amount": -15500
+    },
+    {
+      "type": "Buy",
+      "name": "Nifty 50 Index Fund",
+      "detail": "Monthly investment",
+      "date": "2026-10-05",
+      "amount": -10000
+    },
+    {
+      "type": "Valuation",
+      "name": "Fixed deposit",
+      "detail": "Manual update",
+      "date": "2026-10-01",
+      "amount": 200000
+    }
+  ],
+  "realizedGain": 18400,
+  "xirr": 11.8
+}

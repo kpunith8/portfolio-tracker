@@ -24,7 +24,7 @@ Users maintain their own purchase and sale records and may use a downloadable CS
 - Planned views include a dashboard, investment details, transaction history, sold investments and settings. Performance measures include profit and loss, CAGR and XIRR where the required information is available.
 - Kite and application authentication are separate; data freshness and unavailable information must be visible. No automatic broker portfolio synchronization or order placement is planned.
 - Tax reporting is intended as preparation support using user-provided data, with unsupported cases flagged for review. Applicable forms and rules vary by assessment year.
-- The application is currently at the landing-page stage. Planned authentication, database and investment features are not yet implemented.
+- The application currently has a landing page, basic Kinde authentication, and an authenticated dashboard using illustrative data. Database and investment-management features are not yet implemented.
 - Kite session arrangements, data-use rights, historical data entitlement and some manual-asset details remain open decisions.
 
 ## Evidence on Hand
