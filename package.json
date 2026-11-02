@@ -6,25 +6,44 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "lint": "eslint . --max-warnings=0",
+    "typecheck": "tsc --noEmit",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx,json,css}\" \"*.{js,mjs,cjs,ts,json}\"",
+    "format:check": "prettier --check \"src/**/*.{js,jsx,ts,tsx,json,css}\" \"*.{js,mjs,cjs,ts,json}\"",
+    "prepare": "husky",
+    "test:e2e": "playwright test"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@kinde-oss/kinde-auth-nextjs": "^2.13.2",
     "lucide-react": "^1.66.0",
     "next": "^16.4.4",
     "react": "^19.3.1",
-    "react-dom": "^19.3.1"
+    "react-dom": "^19.3.1",
+    "recharts": "^3.10.1"
   },
   "private": true,
   "devDependencies": {
+    "@playwright/test": "^1.64.1",
     "@types/node": "^26.6.6",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "eslint": "^9.39.5",
     "eslint-config-next": "^16.4.4",
+    "eslint-config-prettier": "^10.1.8",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.6.0",
+    "prettier": "^3.9.10",
     "typescript": "^6.0.3"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx,mjs,cjs}": [
+      "eslint --fix --max-warnings=0",
+      "prettier --write"
+    ],
+    "*.{css,json}": "prettier --write"
   }
 }

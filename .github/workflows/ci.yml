@@ -1,0 +1,75 @@
+name: Next.js CI
+
+on:
+  push:
+  pull_request:
+
+env:
+  KINDE_CLIENT_ID: ${{ secrets.KINDE_CLIENT_ID || 'ci_dummy' }}
+  KINDE_CLIENT_SECRET: ${{ secrets.KINDE_CLIENT_SECRET || 'ci_dummy' }}
+  KINDE_ISSUER_URL: ${{ secrets.KINDE_ISSUER_URL || 'https://ci-dummy.kinde.com' }}
+  KINDE_SITE_URL: ${{ secrets.KINDE_SITE_URL || 'http://localhost:3000' }}
+  KINDE_POST_LOGIN_REDIRECT_URL: ${{ secrets.KINDE_POST_LOGIN_REDIRECT_URL || 'http://localhost:3000/dashboard' }}
+  KINDE_POST_LOGOUT_REDIRECT_URL: ${{ secrets.KINDE_POST_LOGOUT_REDIRECT_URL || 'http://localhost:3000' }}
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Lint, format, typecheck & build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - name: Restore Next.js build cache
+        uses: actions/cache@v5
+        with:
+          path: ${{ github.workspace }}/.next/cache
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-${{ hashFiles('src/**/*.{js,jsx,ts,tsx}') }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-
+      - name: Install dependencies
+        run: npm ci
+      - name: Run linter
+        run: npm run lint
+      - name: Check formatting
+        run: npm run format:check
+      - name: Type check
+        run: npm run typecheck
+      - name: Build Next.js app
+        run: npm run build
+
+  # Enable after adding Playwright tests and the required test authentication.
+  e2e:
+    name: Playwright tests
+    if: ${{ false }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+      - name: Run Playwright tests
+        run: npm run test:e2e
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
