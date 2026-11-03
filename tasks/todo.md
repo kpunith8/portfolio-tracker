@@ -4,40 +4,40 @@ Each item is a small independently verifiable slice. Refer to the [plan](plan.md
 
 ## Feasibility
 
-- [ ] Verify Kite subscription, authenticated session, history ranges, price adjustment, rate limits and market-data rights. Test quote and daily candles for a few supported tickers; document cost and limitations.
+- [ ] Verify FYERS subscription, authenticated session, history ranges, price adjustment, rate limits and market-data rights. Test quote and daily candles for a few supported tickers; document cost and limitations. A single-owner live quote batch and selected historical closes were verified; corporate-action handling, provider rights and broader entitlement tests remain pending.
 
 ## Foundation
 
-- [ ] Bootstrap Next.js, TypeScript, Prisma Client, Prisma Migrate, PostgreSQL and lucide-react. Verify migrations, local development and production build.
+- [ ] Complete database foundation and migration workflow. The Neon driver and first portfolio identity migration are in place; a migration history system, isolated environments, and broader verification remain pending.
 - [ ] Add Kinde sign-in and user-scoped queries. Basic sign-in and a protected dashboard are scaffolded; user-scoped persistence is pending. Verify two users cannot see or mutate each other's data.
-- [ ] Create five core tables and database constraints; verify migration and tenant ownership tests.
+- [ ] Complete ledger schema and service rules. Migration 002 adds instruments, transactions, observations, period baselines and sale allocations with composite ownership foreign keys; transactional oversell protection, FIFO semantics and two-user authorization tests remain pending.
 
 ## Investments
 
-- [ ] Add stock and manual asset entry with validated buy transactions. Verify persistence and asset ownership.
-- [ ] Add sales, income, edits and audited void behavior; verify chronological oversell protection and concurrent writes.
+- [ ] Add stock and manual asset entry with validated buy transactions. Manual stock entry is implemented; manual assets and end-to-end ownership verification remain pending.
+- [ ] Add sales, income, edits and audited void behavior. FIFO sales reject oversells and backdated entries before later sales; income, edits, voids, idempotency and concurrent integration tests remain pending.
 - [ ] Implement FIFO, value and P/L with decimal arithmetic; test partial sales, fees and zero or missing prices.
 - [ ] Add manual dated valuations for mutual funds, gold, EPF, fixed deposits and other assets. Verify stale and missing valuation states.
 
-## Kite and performance
+## FYERS and performance
 
-- [ ] Implement separate server-side Kite connection and expiry/reconnect. Confirm no credentials are sent to clients.
+- [ ] Implement separate server-side FYERS connection and expiry/reconnect. Confirm no credentials are sent to clients.
 - [ ] Sync instrument catalog safely and search by ticker/exchange. Verify refresh preserves existing transaction links.
-- [ ] Fetch batched current quotes and historical daily candles on demand with bounded cache and rate control. Test missing quotes, expiry, 429 and prior-close fallback.
-- [ ] Calculate per-lot CAGR, XIRR, price change and cash-flow-aware period P/L. Verify independent fixtures and unavailable cases.
-- [ ] Build investment detail chart and all requested ranges, with actual baseline dates and transaction breakdown. Test missing history and manual valuations.
+- [ ] Complete provider failure and concurrency verification. Batched quotes, five short historical windows, shared rate slots, cache fallback and prior-close selection are implemented; unit and live happy-path checks pass, while simulated expiry, 429, partial-response and concurrent-instance integration tests remain pending.
+- [ ] Calculate per-lot CAGR, XIRR, price change and cash-flow-aware period P/L. Purchase-level CAGR and investment XIRR are implemented for supported inputs; broader cash-flow scenarios and validation remain pending.
+- [ ] Build investment detail chart and all requested ranges, with actual baseline dates and transaction breakdown. Five dated investment-value points and current value are implemented; manual valuations and broader history remain pending.
 
 ## User experience and import
 
-- [ ] Build tabbed investments and responsive dashboard with clear price timestamps and coverage. A sample-data dashboard exists; live data and investment tabs are pending. Verify user totals reconcile with holdings.
+- [ ] Build tabbed investments and responsive dashboard with clear price timestamps and coverage. Basic stock ledger views support buys and FIFO sales, dated quotes and five baseline closes. The dashboard charts estimated historical purchase cost and latest available quotes; server-side pagination is implemented; full historical coverage remains pending. Verify user totals reconcile with holdings.
 - [ ] Download CSV template and preview validation without writes. Test malformed rows, unsupported tickers and duplicates.
-- [ ] Commit imports atomically and idempotently. Test rollback, duplicate references and concurrent sales.
+- [ ] Commit imports atomically and idempotently. A one-off purchase seed used guarded atomic writes and was checked for repeat duplicates; a general import workflow, rollback and concurrent-sales testing remain pending.
 - [ ] Verify mobile, keyboard, contrast, reduced motion, chart alternatives and empty/error states.
 
 ## Deployment
 
 - [ ] Configure isolated Vercel environments and managed Postgres, migration execution, pooled connections, secrets and backup/restore.
-- [ ] Run unit, integration and end-to-end tests, including authorization isolation, calculation fixtures and Kite failure handling; document known limitations.
+- [ ] Run unit, integration and end-to-end tests, including authorization isolation, calculation fixtures and FYERS failure handling; document known limitations.
 
 
 ## Sold transactions and tax reporting — incremental slices

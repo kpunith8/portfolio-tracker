@@ -447,3 +447,52 @@ h1 em {
     display: none;
   }
 }
+
+/* Shared text and interaction tokens */
+:root {
+  --muted: #51665a;
+  --green: #326e4e;
+  --focus-ring: #1d6844;
+}
+body {
+  line-height: 1.5;
+}
+::selection {
+  background: #d3e9d8;
+  color: #193b29;
+}
+:where(a, button, input, select, summary):focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+a {
+  text-underline-offset: 0.18em;
+}
+.nav-link,
+.primary,
+.kicker,
+.hero-note,
+.section-heading p,
+.section-heading span,
+.features p {
+  font-size: 14px;
+}
+.hero-note,
+.features p,
+.section-heading span {
+  color: var(--muted);
+}
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .primary {
+    transition: none;
+  }
+}
+.preview-top,
+.preview-main p,
+.preview-bottom span,
+.footer {
+  font-size: 14px;
+}
