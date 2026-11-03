@@ -50,61 +50,29 @@ export default function Home() {
             Built for a clearer relationship with your money.
           </p>
         </div>
-        <div
-          className="preview"
-          aria-label="Illustration of a portfolio overview"
-        >
+        <div className="preview" aria-label="Portfolio features">
           <div className="preview-top">
             <span>Portfolio overview</span>
-            <span className="preview-tag">Illustrative preview</span>
           </div>
           <div className="preview-main">
             <div>
-              <p>Total portfolio value</p>
-              <strong>₹ 12,48,500</strong>
-              <span className="growth">
-                ↗ 12.4% <small>all time</small>
-              </span>
+              <p>Your portfolio</p>
+              <strong>Your investments, in one place</strong>
             </div>
             <span className="chart-icon">
               <ChartNoAxesCombined size={22} />
             </span>
           </div>
-          <div className="chart" aria-hidden="true">
-            <svg viewBox="0 0 500 170" preserveAspectRatio="none">
-              <defs>
-                <linearGradient id="fill" x1="0" x2="0" y1="0" y2="1">
-                  <stop offset="0" stopColor="#b7d8c4" stopOpacity=".65" />
-                  <stop offset="1" stopColor="#b7d8c4" stopOpacity="0" />
-                </linearGradient>
-              </defs>
-              <path
-                d="M0 145 C45 139 55 118 90 125 S140 93 175 102 S220 75 260 85 S300 50 345 62 S405 21 440 34 S475 15 500 10 L500 170 L0 170Z"
-                fill="url(#fill)"
-              />
-              <path
-                d="M0 145 C45 139 55 118 90 125 S140 93 175 102 S220 75 260 85 S300 50 345 62 S405 21 440 34 S475 15 500 10"
-                fill="none"
-                stroke="#4e8068"
-                strokeWidth="2.5"
-              />
-            </svg>
-          </div>
-          <div className="chart-labels">
-            <span>Past</span>
-            <span>Today</span>
-          </div>
           <div className="preview-bottom">
             <div>
-              <span>Invested</span>
-              <strong>₹ 11,10,000</strong>
+              <span>Record</span>
+              <strong>Purchases and sales</strong>
             </div>
             <div>
-              <span>Overall return</span>
-              <strong className="green">+ ₹ 1,38,500</strong>
+              <span>Review</span>
+              <strong>Your transaction history</strong>
             </div>
           </div>
-          <p className="sample-note">Example figures shown for illustration.</p>
         </div>
       </section>
       <section className="overview" id="overview">
