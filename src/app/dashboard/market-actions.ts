@@ -3,6 +3,10 @@ import { refreshBaseline } from "../../server/market-data/history";
 import { database, subject } from "../../server/portfolio/ledger";
 import { refreshQuotes } from "../../server/market-data/fyers";
 import { periods, type Period } from "../../domain/market-data";
+import { syncDailyHistory } from "../../server/market-data/daily-history";
+export async function refreshDailyHistory() {
+  return syncDailyHistory();
+}
 export async function refreshHistoricalPrice(id: string, period: string) {
   if (
     !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(

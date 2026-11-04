@@ -2,7 +2,7 @@ import "server-only";
 import { neon } from "@neondatabase/serverless";
 import Decimal from "decimal.js";
 import { remainingLot } from "../../domain/holdings";
-import { portfolioHistory } from "../../domain/portfolio-history";
+import { dailyPortfolioHistory } from "../../domain/daily-portfolio-history";
 import { createHash } from "node:crypto";
 import { unstable_cache } from "next/cache";
 import { marketDate } from "../../domain/market-data";
@@ -68,15 +68,23 @@ export async function readPortfolio(options: PortfolioReadOptions) {
       FROM ticker_period_baselines b JOIN portfolios o ON o.id=b.portfolio_id WHERE o.kinde_subject=${user} AND b.instrument_id=${options.detailId}::uuid`
     : Promise.resolve([]);
   const chargesPromise = sql`SELECT EXISTS(SELECT 1 FROM investment_transactions t JOIN portfolios o ON o.id=t.portfolio_id WHERE o.kinde_subject=${user} AND t.voided_at IS NULL AND t.notes='Imported purchase; fees and taxes were not supplied.') AS missing`;
-  const [instruments, baselines, chargeRows, dashboardTransactions] =
-    await Promise.all([
-      pricesPromise,
-      baselinesPromise,
-      chargesPromise,
-      options.view === "dashboard"
-        ? readTransactions(user)
-        : Promise.resolve(null),
-    ]);
+  const [
+    instruments,
+    baselines,
+    chargeRows,
+    dashboardTransactions,
+    dailyPrices,
+  ] = await Promise.all([
+    pricesPromise,
+    baselinesPromise,
+    chargesPromise,
+    options.view === "dashboard"
+      ? readTransactions(user)
+      : Promise.resolve(null),
+    options.view === "dashboard"
+      ? sql`SELECT d.instrument_id,d.market_date::text AS market_date,d.price::text AS price,d.provider_symbol FROM daily_closing_prices d JOIN portfolios p ON p.id=d.portfolio_id WHERE p.kinde_subject=${user} ORDER BY d.market_date`
+      : Promise.resolve([]),
+  ]);
   const chargesMissing = Boolean(chargeRows[0]?.missing);
   let transactions: Awaited<ReturnType<typeof readTransactions>> = [];
   let total = 0;
@@ -86,7 +94,9 @@ export async function readPortfolio(options: PortfolioReadOptions) {
     cost: string;
     latest: string;
   }[] = [];
-  let history: ReturnType<typeof portfolioHistory> = [];
+  let history: Array<
+    ReturnType<typeof dailyPortfolioHistory>[number] & { alternate: boolean }
+  > = [];
   if (options.view === "dashboard") {
     const all = dashboardTransactions ?? [];
     const positions = new Map<
@@ -119,20 +129,32 @@ export async function readPortfolio(options: PortfolioReadOptions) {
       cost: p.cost.toString(),
       latest: latestTrades.get(id) ?? p.latest,
     }));
-    const quotes: Record<string, { date: string; price: string }> = {};
-    for (const i of instruments)
-      if (i.price && i.market_date)
-        quotes[i.id] = { date: i.market_date, price: i.price };
-    const first = all.reduce(
-      (min, t) => (t.transaction_date < min ? t.transaction_date : min),
-      options.asOf,
+    const liveQuotes = instruments.flatMap((instrument) =>
+      instrument.price && instrument.market_date === options.asOf
+        ? [
+            {
+              instrument_id: instrument.id,
+              market_date: options.asOf,
+              price: instrument.price,
+            },
+          ]
+        : [],
     );
-    history = portfolioHistory(
-      all as unknown as Parameters<typeof portfolioHistory>[0],
-      quotes,
-      first,
-      options.asOf,
+    const alternateDates = new Set(
+      dailyPrices
+        .filter(
+          (price) =>
+            typeof price.provider_symbol === "string" &&
+            price.provider_symbol.startsWith("BSE:"),
+        )
+        .map((price) => price.market_date as string),
     );
+    history = dailyPortfolioHistory(
+      all as unknown as Parameters<typeof dailyPortfolioHistory>[0],
+      [...dailyPrices, ...liveQuotes] as unknown as Parameters<
+        typeof dailyPortfolioHistory
+      >[1],
+    ).map((point) => ({ ...point, alternate: alternateDates.has(point.date) }));
     transactions = all.slice(0, 5);
   } else if (options.view === "transactions") {
     const [counts, rows] = await sql.transaction([

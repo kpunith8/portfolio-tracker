@@ -1,24 +1,23 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Area,
   AreaChart,
   CartesianGrid,
-  ReferenceDot,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
 import Decimal from "decimal.js";
-import { clipPortfolioHistory } from "../../domain/portfolio-history";
+import { refreshDailyHistory } from "../../app/dashboard/market-actions";
 
 type Point = {
   date: string;
   value: string | null;
-  estimated: boolean;
-  estimatedCount: number;
+  alternate: boolean;
 };
 const ranges = ["7D", "30D", "3M", "6M", "1Y", "All"] as const;
 type Range = (typeof ranges)[number];
@@ -58,11 +57,45 @@ export function PortfolioHistoryChart({
   asOf: string;
 }) {
   const [range, setRange] = useState<Range>("1Y");
+  const [status, setStatus] = useState("loading");
+  const [updated, setUpdated] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  const router = useRouter();
+  useEffect(() => {
+    let cancelled = false;
+    async function sync() {
+      const end = Date.now() + 5 * 60 * 1000;
+      while (!cancelled && Date.now() < end) {
+        const result = await refreshDailyHistory();
+        if (cancelled) return;
+        if (result === "updated") {
+          setUpdated(true);
+          setStatus("loading");
+        } else if (result === "complete" || result === "partial") {
+          setStatus(result);
+          return;
+        } else if (result === "reconnect" || result === "unavailable") {
+          setStatus(result);
+          return;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 2500));
+      }
+      if (!cancelled) setStatus("paused");
+    }
+    void sync().catch(() => {
+      if (!cancelled) setStatus("unavailable");
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [attempt]);
   const data = useMemo(() => {
     const first = history[0]?.date ?? asOf;
     const requested = startFor(range, asOf, first);
     const from = requested > first ? requested : first;
-    const visible = clipPortfolioHistory(history, from, asOf);
+    const visible = history.filter(
+      (point) => point.date >= from && point.date <= asOf,
+    );
     return visible.map((point) => ({
       ...point,
       timestamp: Date.parse(`${point.date}T00:00:00Z`),
@@ -75,14 +108,6 @@ export function PortfolioHistoryChart({
       point.plot !== null &&
       Number.isFinite(point.plot),
   );
-  const peak = valid.reduce<(typeof valid)[number] | null>(
-    (a, b) => (!a || new Decimal(b.value).gt(a.value) ? b : a),
-    null,
-  );
-  const trough = valid.reduce<(typeof valid)[number] | null>(
-    (a, b) => (!a || new Decimal(b.value).lt(a.value) ? b : a),
-    null,
-  );
   return (
     <section
       className="real-panel portfolio-history-panel"
@@ -91,7 +116,7 @@ export function PortfolioHistoryChart({
       <div className="panel-heading history-heading">
         <div>
           <h2>Portfolio value over time</h2>
-          <p>Estimated from purchase costs and the latest available prices</p>
+          <p>Value of recorded holdings at daily market close</p>
         </div>
         <div className="history-filters" aria-label="History date range">
           {ranges.map((option) => (
@@ -106,11 +131,42 @@ export function PortfolioHistoryChart({
           ))}
         </div>
       </div>
-      <p className="panel-note">
-        Historical points use the remaining purchase cost of shares held, not
-        their historical market value. The latest point uses available FYERS
-        quotes and falls back to cost where a quote is missing or predates a
-        purchase. Purchases and sales affect the chart.
+      <p className="panel-note" role="status">
+        {status === "loading"
+          ? "Updating missing history in the background. "
+          : status === "reconnect"
+            ? "Connect FYERS in Settings to update history. "
+            : status === "unavailable"
+              ? "Some history could not be loaded. "
+              : status === "partial"
+                ? "Some older prices are unavailable from FYERS. "
+                : status === "paused"
+                  ? "History update paused; revisit the dashboard to continue. "
+                  : ""}
+        {updated && (
+          <button
+            type="button"
+            className="history-refresh"
+            onClick={() => {
+              setUpdated(false);
+              router.refresh();
+            }}
+          >
+            Show updated history
+          </button>
+        )}
+        {(status === "paused" || status === "unavailable") && (
+          <button
+            type="button"
+            className="history-refresh"
+            onClick={() => {
+              setStatus("loading");
+              setAttempt((value) => value + 1);
+            }}
+          >
+            Retry update
+          </button>
+        )}
       </p>
       {valid.length >= 2 ? (
         <>
@@ -127,12 +183,14 @@ export function PortfolioHistoryChart({
                   type="number"
                   scale="time"
                   domain={["dataMin", "dataMax"]}
-                  tickFormatter={(v: number) =>
-                    labelDate(new Date(v).toISOString().slice(0, 10)).replace(
-                      / \d{4}$/,
-                      "",
-                    )
-                  }
+                  tickFormatter={(v: number) => {
+                    const date = labelDate(
+                      new Date(v).toISOString().slice(0, 10),
+                    );
+                    return range === "All"
+                      ? date.replace(/^\d+ /, "")
+                      : date.replace(/ \d{4}$/, "");
+                  }}
                   minTickGap={35}
                   tickLine={false}
                   axisLine={false}
@@ -140,6 +198,14 @@ export function PortfolioHistoryChart({
                 />
                 <YAxis
                   width={70}
+                  domain={([minimum, maximum]: readonly [number, number]) => {
+                    const padding = Math.max(
+                      (maximum - minimum) * 0.08,
+                      maximum * 0.005,
+                      1,
+                    );
+                    return [Math.max(0, minimum - padding), maximum + padding];
+                  }}
                   tickFormatter={(v: number) =>
                     `₹${new Intl.NumberFormat("en-IN", { notation: "compact", maximumFractionDigits: 1 }).format(v)}`
                   }
@@ -158,9 +224,11 @@ export function PortfolioHistoryChart({
                         <span>{labelDate(p.date)}</span>
                         <strong>{money(p.value)}</strong>
                         <span>
-                          {p.estimated
-                            ? `Estimated from purchase cost${p.estimatedCount ? ` · ${p.estimatedCount} holding${p.estimatedCount === 1 ? "" : "s"}` : ""}`
-                            : "Latest available FYERS quotes"}
+                          {p.date === asOf
+                            ? "Latest FYERS quote"
+                            : p.alternate
+                              ? "FYERS daily close · BSE data available"
+                              : "FYERS daily close"}
                         </span>
                       </div>
                     ) : null;
@@ -169,34 +237,15 @@ export function PortfolioHistoryChart({
                 <Area
                   type="monotone"
                   dataKey="plot"
+                  baseValue="dataMin"
                   stroke="#357756"
                   strokeWidth={2.5}
                   fill="#e9f3ec"
                   connectNulls={false}
-                  dot={{ r: 3, fill: "#357756" }}
+                  dot={false}
                   activeDot={{ r: 5 }}
                   isAnimationActive={false}
                 />
-                {peak && (
-                  <ReferenceDot
-                    x={peak.timestamp}
-                    y={peak.plot}
-                    r={5}
-                    fill="#24663f"
-                    stroke="#fff"
-                    strokeWidth={2}
-                  />
-                )}
-                {trough && trough.date !== peak?.date && (
-                  <ReferenceDot
-                    x={trough.timestamp}
-                    y={trough.plot}
-                    r={5}
-                    fill="#a6322d"
-                    stroke="#fff"
-                    strokeWidth={2}
-                  />
-                )}
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -206,19 +255,18 @@ export function PortfolioHistoryChart({
           <strong>
             {valid.length === 1
               ? `One complete value: ${money(valid[0].value)} on ${labelDate(valid[0].date)}`
-              : "Not enough transactions for this period"}
+              : "No complete history available for this period"}
           </strong>
-          <p>
-            Add a purchase to see your portfolio history. Missing sale
-            allocations cannot be estimated.
-          </p>
+          <p>Missing prices for any holding leave that date unavailable.</p>
         </div>
       )}
       <p className="history-footnote">
-        Historical values are cost estimates, not historical prices or
-        investment returns. Latest quotes may be from different times or dates;
-        the curve between recorded points is illustrative. Corporate-action
-        adjustments are unverified.
+        Daily closes use recorded quantities and FYERS historical prices.
+        Purchases and sales affect value; this is not investment return. FYERS
+        adjusts prices for corporate actions; recorded quantities and cached
+        prices may use a different basis. Missing NSE history may use BSE closes
+        matched by ISIN. Dates with no prices for any holding are not shown;
+        history may be incomplete. The vertical axis fits the selected range.
       </p>
     </section>
   );
