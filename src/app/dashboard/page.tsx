@@ -62,7 +62,6 @@ export default async function Dashboard({
             portfolio<span className="app-brand-light">tracker</span>
           </span>
         </Link>
-        <div className="sidebar-label">Your workspace</div>
         <nav className="side-nav" aria-label="Main navigation">
           {nav.map(({ name, icon: Icon, view: key }) => (
             <Link

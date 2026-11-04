@@ -2,6 +2,10 @@
 
 Each item is a small independently verifiable slice. Refer to the [plan](plan.md) and [technical specification](../docs/technical-specification.md).
 
+Daily portfolio history is wired up; see [delivery notes and remaining verification](daily-portfolio-history-plan.md). Corporate-action reconciliation and comprehensive provider-failure testing remain pending.
+
+Purchase deletion is implemented with a confirmation and a guard against subsequent sales; apply migration 008 to enable it. Editing and sale-allocation replay remain pending.
+
 ## Feasibility
 
 - [ ] Verify FYERS subscription, authenticated session, history ranges, price adjustment, rate limits and market-data rights. Test quote and daily candles for a few supported tickers; document cost and limitations. A single-owner live quote batch and selected historical closes were verified; corporate-action handling, provider rights and broader entitlement tests remain pending.
@@ -29,7 +33,7 @@ Each item is a small independently verifiable slice. Refer to the [plan](plan.md
 
 ## User experience and import
 
-- [ ] Build tabbed investments and responsive dashboard with clear price timestamps and coverage. Basic stock ledger views support buys and FIFO sales, dated quotes and five baseline closes. The dashboard charts estimated historical purchase cost and latest available quotes; server-side pagination is implemented; full historical coverage remains pending. Verify user totals reconcile with holdings.
+- [ ] Build tabbed investments and responsive dashboard with clear price timestamps and coverage. Basic stock ledger views support buys and FIFO sales, dated quotes and five baseline closes. The dashboard charts available daily closes and a same-day latest quote; server-side pagination is implemented; full historical coverage remains pending. Verify user totals reconcile with holdings.
 - [ ] Download CSV template and preview validation without writes. Test malformed rows, unsupported tickers and duplicates.
 - [ ] Commit imports atomically and idempotently. A one-off purchase seed used guarded atomic writes and was checked for repeat duplicates; a general import workflow, rollback and concurrent-sales testing remain pending.
 - [ ] Verify mobile, keyboard, contrast, reduced motion, chart alternatives and empty/error states.

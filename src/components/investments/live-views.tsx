@@ -19,9 +19,10 @@ import {
   Check,
   ChevronDown,
   LoaderCircle,
+  Trash2,
   X,
 } from "lucide-react";
-import { recordTrade } from "../../app/dashboard/trade-actions";
+import { deletePurchase, recordTrade } from "../../app/dashboard/trade-actions";
 
 Decimal.set({ precision: 64, rounding: Decimal.ROUND_HALF_UP });
 
@@ -88,8 +89,7 @@ type Data = {
   history: {
     date: string;
     value: string | null;
-    estimated: boolean;
-    estimatedCount: number;
+    alternate: boolean;
   }[];
   chargesMissing: boolean;
   total: number;
@@ -242,6 +242,64 @@ function SortMenu({
     </div>
   );
 }
+function DeletePurchaseModal({
+  lot,
+  close,
+}: {
+  lot: Transaction;
+  close: () => void;
+}) {
+  const dialog = useRef<HTMLDialogElement>(null);
+  const [state, action, pending] = useActionState(deletePurchase, {});
+  const router = useRouter();
+  useEffect(() => {
+    dialog.current?.showModal();
+  }, []);
+  useEffect(() => {
+    if (state.success) {
+      router.refresh();
+      close();
+    }
+  }, [state.success, router, close]);
+  return (
+    <dialog ref={dialog} className="trade-dialog" onClose={close}>
+      <div className="trade-dialog-header">
+        <div>
+          <h2>Delete purchase?</h2>
+          <p>
+            {date(lot.transaction_date)} · {n(lot.quantity).toString()} shares
+            or units · {fmt(n(lot.unit_price))} each
+          </p>
+        </div>
+        <button type="button" aria-label="Close" onClick={close}>
+          <X size={19} />
+        </button>
+      </div>
+      <form action={action} className="trade-form">
+        <input type="hidden" name="id" value={lot.id} />
+        <p>
+          This permanently deletes the purchase and cannot be undone. You may
+          need to add a new entry to restore your portfolio data. Past values
+          and returns may change.
+        </p>
+        {state.error && (
+          <p className="trade-error" role="alert">
+            {state.error}
+          </p>
+        )}
+        <div className="trade-buttons">
+          <button type="button" onClick={close}>
+            Cancel
+          </button>
+          <button type="submit" disabled={pending}>
+            {pending ? "Deleting…" : "Delete purchase"}
+          </button>
+        </div>
+      </form>
+    </dialog>
+  );
+}
+
 function TradeModal({
   instruments,
   type,
@@ -259,6 +317,15 @@ function TradeModal({
   const [selected, setSelected] = useState(
     lot?.instrument_id || (type === "BUY" ? "new" : instruments[0]?.id || ""),
   );
+  const [symbol, setSymbol] = useState("");
+  const [quantity, setQuantity] = useState("");
+  const [price, setPrice] = useState("");
+  const [tradeDate, setTradeDate] = useState("");
+  const complete =
+    (selected === "new" ? symbol.trim() !== "" : selected !== "") &&
+    /^[0-9]+$/.test(quantity) &&
+    price.trim() !== "" &&
+    tradeDate !== "";
   useEffect(() => {
     dialog.current?.showModal();
   }, []);
@@ -314,6 +381,8 @@ function TradeModal({
               maxLength={30}
               required
               autoComplete="off"
+              value={symbol}
+              onChange={(event) => setSymbol(event.target.value)}
             />
             <small>Use the NSE trading symbol from your contract note.</small>
           </label>
@@ -327,6 +396,8 @@ function TradeModal({
             pattern="[0-9]+"
             required
             placeholder="0"
+            value={quantity}
+            onChange={(event) => setQuantity(event.target.value)}
           />
           <small>
             {lot
@@ -342,11 +413,19 @@ function TradeModal({
             inputMode="decimal"
             required
             placeholder="0.00"
+            value={price}
+            onChange={(event) => setPrice(event.target.value)}
           />
         </label>
         <label>
           {type === "BUY" ? "Purchase date" : "Sale date"}
-          <input type="date" name="date" required />
+          <input
+            type="date"
+            name="date"
+            required
+            value={tradeDate}
+            onChange={(event) => setTradeDate(event.target.value)}
+          />
         </label>
         {state.error && (
           <p className="trade-error" role="alert">
@@ -361,7 +440,7 @@ function TradeModal({
           <button type="button" onClick={close}>
             Cancel
           </button>
-          <button type="submit" disabled={pending}>
+          <button type="submit" disabled={pending || !complete}>
             {pending
               ? "Saving…"
               : type === "BUY"
@@ -392,6 +471,7 @@ export function LiveViews({
     type: "BUY" | "SELL";
     lot?: Transaction;
   } | null>(null);
+  const [deleteLot, setDeleteLot] = useState<Transaction | null>(null);
   const router = useRouter();
   const [quoteStatus, setQuoteStatus] = useState<MarketStatus>(marketStatus);
   const quoteRequest = useRef<Promise<MarketStatus> | null>(null);
@@ -753,14 +833,24 @@ export function LiveViews({
                                   )}
                                 </td>
                                 <td>
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      setModal({ type: "SELL", lot: l })
-                                    }
-                                  >
-                                    Record sale
-                                  </button>
+                                  <div className="purchase-actions">
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setModal({ type: "SELL", lot: l })
+                                      }
+                                    >
+                                      Record sale
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="delete-purchase"
+                                      aria-label={`Delete purchase of ${h.i.trading_symbol} on ${date(l.transaction_date)}`}
+                                      onClick={() => setDeleteLot(l)}
+                                    >
+                                      <Trash2 size={17} aria-hidden="true" />
+                                    </button>
+                                  </div>
                                 </td>
                               </tr>
                             ))}
@@ -840,6 +930,9 @@ export function LiveViews({
             </nav>
           )}
         </section>
+      )}
+      {deleteLot && (
+        <DeletePurchaseModal lot={deleteLot} close={() => setDeleteLot(null)} />
       )}
       {modal && (
         <TradeModal
@@ -1065,7 +1158,7 @@ function DashboardOverview({
               <div>
                 <span>
                   <i className="composition-dot units" />
-                  Listed units
+                  ETFs
                 </span>
                 <strong>{fmt(unitsValue)}</strong>
                 <small>{unitsValue.div(totalValue).mul(100).toFixed(1)}%</small>

@@ -62,6 +62,7 @@
 .side-nav {
   display: grid;
   gap: 5px;
+  margin-top: 53px;
 }
 
 .side-link {
@@ -1581,9 +1582,30 @@ td:nth-child(n + 3) {
 .sample-lots td button:hover {
   background: #eaf3eb;
 }
+.purchase-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+}
+.sample-lots td .delete-purchase {
+  display: inline-grid;
+  place-items: center;
+  min-width: 40px;
+  min-height: 40px;
+  padding: 8px;
+  color: #a6322d;
+}
 .holding-details-link {
   min-height: 40px;
   font-weight: 600;
+  text-underline-offset: 0.2em;
+}
+.sign-out,
+.mobile-sign-out {
+  color: #286a49;
+  font-weight: 600;
+  text-decoration: underline;
   text-underline-offset: 0.2em;
 }
 .sample-page > h1 {
@@ -2329,6 +2351,16 @@ td:nth-child(n + 3) {
 .history-filters button:focus-visible {
   outline: 3px solid #1d6844;
   outline-offset: 2px;
+}
+.history-refresh {
+  border: 0;
+  background: transparent;
+  color: #286a49;
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
 }
 .portfolio-chart {
   height: 290px;

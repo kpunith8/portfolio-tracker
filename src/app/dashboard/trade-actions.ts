@@ -7,6 +7,37 @@ import {
 } from "../../server/portfolio/ledger";
 
 type Result = { error?: string; success?: boolean };
+export async function deletePurchase(
+  _state: Result,
+  form: FormData,
+): Promise<Result> {
+  const id = String(form.get("id") || "");
+  if (
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
+  )
+    return { error: "Purchase not found." };
+  try {
+    const user = await subject();
+    const sql = database();
+    await sql`SELECT delete_portfolio_purchase(${user}, ${id}::uuid)`;
+    updateTag(ledgerCacheTag(user));
+    revalidatePath("/dashboard");
+    return { success: true };
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message.includes("SALE_REPLAY_REQUIRED")
+    )
+      return {
+        error:
+          "This purchase has a later recorded sale. It cannot be deleted until sale allocations can be recalculated.",
+      };
+    return {
+      error:
+        "Could not delete this purchase. Check your portfolio and try again.",
+    };
+  }
+}
 export async function recordTrade(
   _state: Result,
   form: FormData,
