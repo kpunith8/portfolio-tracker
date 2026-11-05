@@ -55,3 +55,5 @@ Purchase deletion is implemented with a confirmation and a guard against subsequ
 - [ ] **S7: Tax classification.** Implement supported listed-equity rules for an explicitly researched assessment year with validated fixtures; show review-required for unknown cases and separate tax gain from financial P/L. Depends on S5.
 - [ ] **S8: Annual report and export.** Show annual and period totals, source lots, missing data and reconciliation guidance; export CSV, without claiming final ITR figures or tax payable. Verify totals reconcile and user isolation. Depends on S6 and S7.
 - [ ] **S9: Filing validation.** Compare representative reports against independently calculated examples, broker tax P&L and notified form; document limits and review with a qualified Indian tax professional before relying on calculations. Depends on S8.
+
+- [ ] Complete Live Market: the unpaginated sortable snapshot view is implemented; verify the owner-scoped FYERS Data Socket and 1D calculations during an open market, token renewal, deployed worker packaging and after-hours behavior; cross-instance coordination and persistence of previous closes remain pending.

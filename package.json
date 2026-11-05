@@ -35,6 +35,7 @@
     "@kinde-oss/kinde-auth-nextjs": "^2.13.2",
     "@neondatabase/serverless": "^1.2.0",
     "decimal.js": "^10.6.0",
+    "fyers-api-v3": "^2.4.1",
     "lossless-json": "^4.3.3",
     "lucide-react": "^1.66.0",
     "next": "^16.4.4",

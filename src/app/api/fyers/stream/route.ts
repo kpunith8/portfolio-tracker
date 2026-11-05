@@ -1,0 +1,148 @@
+import "fyers-api-v3"; // Include the SDK and its transitive dependencies in server deployments.
+import { Worker } from "node:worker_threads";
+import { createRequire } from "node:module";
+import { join } from "node:path";
+import { owner, getToken } from "../../../../server/fyers/session";
+import { database } from "../../../../server/portfolio/ledger";
+import { parseMarketTick } from "../../../../domain/live-market";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+// Each worker has its own SDK module instance, so a renewed FYERS session can
+// start cleanly even though the SDK's data socket is a process singleton.
+const workerSource = `
+const { parentPort, workerData } = require('node:worker_threads');
+try {
+ const Socket = require(workerData.sdk).fyersDataSocket;
+ const socket = Socket.getInstance(workerData.token, '', false);
+ socket.on('connect', () => { parentPort.postMessage({status:'connected'}); socket.subscribe(workerData.symbols); });
+ socket.on('message', message => parentPort.postMessage(message && message.s === 'error' ? {status:'error'} : {message}));
+ socket.on('error', () => parentPort.postMessage({status:'error'}));
+ socket.on('close', () => parentPort.postMessage({status:'closed'}));
+ parentPort.on('message', () => { try { socket.close(); } finally { process.exit(0); } });
+ socket.connect();
+} catch { parentPort.postMessage({status:'error'}); }
+`;
+
+type Subscriber = (event: object) => void;
+type Stream = {
+  worker: Worker;
+  key: string;
+  listeners: Set<Subscriber>;
+};
+const globalStreams = globalThis as typeof globalThis & {
+  fyersLiveStream?: Stream;
+};
+
+export async function GET(request: Request) {
+  const user = await owner();
+  const token = user ? await getToken(user) : null;
+  const app = process.env.FYERS_APP_ID;
+  if (!user || !token || !app)
+    return new Response("FYERS reconnect required", { status: 401 });
+  const sql = database();
+  const rows =
+    await sql`SELECT DISTINCT i.fyers_symbol FROM instruments i JOIN portfolios p ON p.id=i.portfolio_id WHERE p.kinde_subject=${user} AND i.is_active AND i.asset_type='STOCK' AND i.fyers_symbol IS NOT NULL AND EXISTS (SELECT 1 FROM investment_transactions t WHERE t.portfolio_id=i.portfolio_id AND t.instrument_id=i.id AND t.type='BUY' AND t.voided_at IS NULL AND t.quantity > COALESCE((SELECT SUM(a.quantity) FROM sale_allocations a WHERE a.portfolio_id=t.portfolio_id AND a.buy_transaction_id=t.id),0)) ORDER BY i.fyers_symbol`;
+  const symbols = rows.map((row) => String(row.fyers_symbol));
+  if (!symbols.length || symbols.length > 100)
+    return new Response(
+      "No eligible symbols or Standard subscription limit exceeded",
+      { status: 409 },
+    );
+  const symbolSet = new Set(symbols);
+  const { createHash } = await import("node:crypto");
+  const key = createHash("sha256")
+    .update(user)
+    .update(token)
+    .update(JSON.stringify(symbols))
+    .digest("hex");
+  let shared = globalStreams.fyersLiveStream;
+  if (shared && shared.key !== key)
+    return new Response("Another market stream is active", { status: 409 });
+  if (!shared) {
+    const worker = new Worker(workerSource, {
+      eval: true,
+      workerData: {
+        sdk: createRequire(join(process.cwd(), "package.json")).resolve(
+          "fyers-api-v3",
+        ),
+        token: `${app}:${token}`,
+        symbols,
+      },
+    });
+    const listeners = new Set<Subscriber>();
+    shared = { worker, key, listeners };
+    globalStreams.fyersLiveStream = shared;
+    worker.on("message", (event: { status?: string; message?: unknown }) => {
+      const tick = parseMarketTick(event.message, symbolSet);
+      const value = tick
+        ? { tick }
+        : event.status
+          ? { status: event.status }
+          : null;
+      if (value) for (const listener of listeners) listener(value);
+    });
+    worker.on("error", () => {
+      for (const listener of listeners) listener({ status: "error" });
+    });
+    worker.on("exit", () => {
+      for (const listener of listeners) listener({ status: "closed" });
+      if (globalStreams.fyersLiveStream?.worker === worker)
+        delete globalStreams.fyersLiveStream;
+    });
+  }
+  const current = shared;
+  const encoder = new TextEncoder();
+  let listener: Subscriber;
+  let heartbeat: ReturnType<typeof setInterval>;
+  const body = new ReadableStream({
+    start(controller) {
+      let closed = false;
+      const stop = () => {
+        if (closed) return;
+        closed = true;
+        clearInterval(heartbeat);
+        current.listeners.delete(listener);
+        if (!current.listeners.size) {
+          current.worker.postMessage("close");
+          void current.worker.terminate();
+          if (globalStreams.fyersLiveStream === current)
+            delete globalStreams.fyersLiveStream;
+        }
+        try {
+          controller.close();
+        } catch {}
+      };
+      listener = (event) => {
+        try {
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify(event)}\n\n`),
+          );
+        } catch {
+          stop();
+        }
+      };
+      current.listeners.add(listener);
+      listener({ status: "connecting" });
+      heartbeat = setInterval(() => listener({ status: "heartbeat" }), 15000);
+      request.signal.addEventListener("abort", stop, { once: true });
+    },
+    cancel() {
+      clearInterval(heartbeat);
+      current.listeners.delete(listener);
+      if (!current.listeners.size) {
+        void current.worker.terminate();
+        if (globalStreams.fyersLiveStream === current)
+          delete globalStreams.fyersLiveStream;
+      }
+    },
+  });
+  return new Response(body, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-store, no-transform",
+      "X-Accel-Buffering": "no",
+    },
+  });
+}
