@@ -470,6 +470,7 @@ export function LiveViews({
   marketStatus,
   asOf,
   initialSort,
+  retryLiveStream,
 }: {
   data: Data;
   view: "portfolio" | "transactions" | "dashboard";
@@ -478,6 +479,7 @@ export function LiveViews({
   marketStatus: MarketStatus;
   asOf: string;
   initialSort: "date" | "value";
+  retryLiveStream: boolean;
 }) {
   const [modal, setModal] = useState<{
     type: "BUY" | "SELL";
@@ -735,6 +737,7 @@ export function LiveViews({
               holdings={holdings}
               ticks={marketTicks}
               setTicks={setMarketTicks}
+              retryLiveStream={retryLiveStream}
             />
           ) : view === "portfolio" && asset !== "Stocks" ? (
             <div className="sample-empty">
@@ -996,12 +999,18 @@ function LiveMarket({
   holdings,
   ticks,
   setTicks,
+  retryLiveStream,
 }: {
   holdings: Holding[];
   ticks: Record<string, MarketTick>;
   setTicks: React.Dispatch<React.SetStateAction<Record<string, MarketTick>>>;
+  retryLiveStream: boolean;
 }) {
-  useLiveMarketStream(holdings.length, setTicks);
+  const streamStatus = useLiveMarketStream(
+    holdings.length,
+    setTicks,
+    retryLiveStream,
+  );
   const activeHoldings = holdings.map((h) => {
     const tick = h.i.fyers_symbol ? ticks[h.i.fyers_symbol] : undefined;
     if (
@@ -1090,6 +1099,19 @@ function LiveMarket({
   ] as const;
   return (
     <>
+      {holdings.length > 0 && (
+        <p className="panel-note" role="status">
+          {streamStatus === "live"
+            ? "Live market updates connected."
+            : streamStatus === "connected"
+              ? "Connected to FYERS; waiting for live prices. Showing latest available quotes."
+              : streamStatus === "unavailable"
+                ? "Live market updates unavailable. Showing latest available quotes. Reopen Live Market to retry."
+                : streamStatus === "reconnecting"
+                  ? "Reconnecting live market updates. Showing latest available quotes."
+                  : "Connecting live market updates. Showing latest available quotes."}
+        </p>
+      )}
       <p className="panel-note live-market-note">
         Prices show the latest available FYERS updates and may be delayed. Daily
         movement reflects current holdings and may be unavailable when previous
