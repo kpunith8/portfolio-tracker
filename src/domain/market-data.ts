@@ -1,5 +1,7 @@
-import Decimal from "decimal.js";
 import { isLosslessNumber } from "lossless-json";
+import { marketDate } from "./market-date-utils.ts";
+import { validMarketPrice } from "./price-utils.ts";
+export { marketDate } from "./market-date-utils.ts";
 
 export const periods = [
   "7D",
@@ -17,13 +19,11 @@ export function numberText(value: unknown) {
     return value;
   return null;
 }
-export function marketDate(epoch: number) {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Kolkata",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date(epoch * 1000));
+/** Classify provider response codes after lossless number parsing. */
+export function fyersErrorStatus(code: unknown): "reconnect" | "unavailable" {
+  return ["-8", "-15", "-16", "-17"].includes(numberText(code) || "")
+    ? "reconnect"
+    : "unavailable";
 }
 export function targetDate(asOf: string, period: Period) {
   const [year, month, day] = asOf.split("-").map(Number);
@@ -54,14 +54,8 @@ export function priorClose(
       if (epoch < 946684800 || epoch > nowSeconds + 86400) return [];
       const day = marketDate(epoch);
       if (day > target) return [];
-      const value = new Decimal(price);
-      if (
-        !value.isFinite() ||
-        value.lte(0) ||
-        value.gte("10000000000000000") ||
-        value.decimalPlaces() > 8
-      )
-        return [];
+      const value = validMarketPrice(price);
+      if (!value) return [];
       return [{ day, price: value.toFixed() }];
     })
     .sort((a, b) => b.day.localeCompare(a.day));
@@ -96,14 +90,8 @@ export function validQuotes(
       continue;
     const epoch = Number(timestamp);
     if (epoch < 946684800 || epoch > nowSeconds + 86400) continue;
-    const value = new Decimal(price);
-    if (
-      !value.isFinite() ||
-      value.lte(0) ||
-      value.gte("10000000000000000") ||
-      value.decimalPlaces() > 8
-    )
-      continue;
+    const value = validMarketPrice(price);
+    if (!value) continue;
     results.set(id, {
       id,
       price: value.toFixed(),

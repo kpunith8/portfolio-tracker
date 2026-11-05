@@ -1,9 +1,10 @@
+import { listStreamingSymbols } from "../../../../server/market-data/stream-queries";
 import "fyers-api-v3"; // Include the SDK and its transitive dependencies in server deployments.
 import { Worker } from "node:worker_threads";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import { owner, getToken } from "../../../../server/fyers/session";
-import { database } from "../../../../server/portfolio/ledger";
+import { database } from "../../../../server/db/database";
 import { parseMarketTick } from "../../../../domain/live-market";
 
 export const runtime = "nodejs";
@@ -42,8 +43,7 @@ export async function GET(request: Request) {
   if (!user || !token || !app)
     return new Response("FYERS reconnect required", { status: 401 });
   const sql = database();
-  const rows =
-    await sql`SELECT DISTINCT i.fyers_symbol FROM instruments i JOIN portfolios p ON p.id=i.portfolio_id WHERE p.kinde_subject=${user} AND i.is_active AND i.asset_type='STOCK' AND i.fyers_symbol IS NOT NULL AND EXISTS (SELECT 1 FROM investment_transactions t WHERE t.portfolio_id=i.portfolio_id AND t.instrument_id=i.id AND t.type='BUY' AND t.voided_at IS NULL AND t.quantity > COALESCE((SELECT SUM(a.quantity) FROM sale_allocations a WHERE a.portfolio_id=t.portfolio_id AND a.buy_transaction_id=t.id),0)) ORDER BY i.fyers_symbol`;
+  const rows = await listStreamingSymbols(sql, user);
   const symbols = rows.map((row) => String(row.fyers_symbol));
   if (!symbols.length || symbols.length > 100)
     return new Response(

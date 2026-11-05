@@ -69,3 +69,11 @@ test("quote refresh continues after a complete batch with more stale holdings", 
   assert.equal(quoteBatchStatus(1, 1, 1), "current");
   assert.equal(quoteBatchStatus(49, 50, 51), "unavailable");
 });
+
+test("FYERS error codes distinguish reconnect from unavailable", async () => {
+  const { fyersErrorStatus } = await import("../../src/domain/market-data.ts");
+  for (const code of ["-8", "-15", "-16", "-17"])
+    assert.equal(fyersErrorStatus(code), "reconnect");
+  for (const code of ["-1", undefined, 15])
+    assert.equal(fyersErrorStatus(code), "unavailable");
+});

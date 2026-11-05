@@ -1,4 +1,6 @@
 import Decimal from "decimal.js";
+import { marketDate } from "./market-date-utils.ts";
+import { validMarketPrice } from "./price-utils.ts";
 
 export function marketTotals(
   holdings: { cost: string; value: string | null }[],
@@ -29,10 +31,7 @@ export function parseMarketTick(input: unknown, symbols: Set<string>) {
       !/^\d+(?:\.\d+)?$/.test(String(value))
     )
       return null;
-    const d = new Decimal(String(value));
-    return d.gt(0) && d.lt("10000000000000000") && d.decimalPlaces() <= 8
-      ? d.toFixed()
-      : null;
+    return validMarketPrice(String(value))?.toFixed() ?? null;
   };
   const price = decimal(tick.ltp);
   if (!price) return null;
@@ -43,17 +42,11 @@ export function parseMarketTick(input: unknown, symbols: Set<string>) {
     timestamp > Math.floor(Date.now() / 1000) + 60
   )
     return null;
-  const marketDate = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Kolkata",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date(timestamp * 1000));
   return {
     symbol: tick.symbol,
     price,
     previousClose: decimal(tick.prev_close_price),
-    marketDate,
+    marketDate: marketDate(timestamp),
     tradedAt: timestamp,
   };
 }
@@ -94,7 +87,7 @@ export function mergeMarketTick(
   };
 }
 
-export function compareMarketPercent(
+export function compareNullableDecimal(
   left: Decimal | null,
   right: Decimal | null,
   ascending: boolean,
@@ -103,6 +96,9 @@ export function compareMarketPercent(
     return left === right ? 0 : left === null ? 1 : -1;
   return (ascending ? 1 : -1) * left.cmp(right);
 }
+
+// Preserve the existing market comparison API for current consumers.
+export const compareMarketPercent = compareNullableDecimal;
 
 export function returnPercent(
   profit: Decimal.Value | null,

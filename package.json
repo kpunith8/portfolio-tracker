@@ -26,7 +26,8 @@
     "db:migrate:009": "node scripts/migrate-009.mjs",
     "db:migrate:010": "node scripts/migrate-010.mjs",
     "test:db-delete-purchase": "node scripts/test-delete-purchase.mjs",
-    "test:unit": "node --test tests/unit/*.test.mjs"
+    "test:unit": "node --test tests/unit/*.test.mjs",
+    "test:server": "node --test tests/server/*.test.mjs"
   },
   "keywords": [],
   "author": "",
