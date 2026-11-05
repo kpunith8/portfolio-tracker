@@ -54,6 +54,8 @@ An expanded portfolio holding has a delete action for a purchase. Deletion requi
 
 The planned deployment target is Vercel with managed PostgreSQL, while keeping application logic portable. Never commit credentials or local environment files.
 
+The Portfolio **Live Market** tab lists open stock holdings on one page. For the configured FYERS owner it opens an on-demand server-side Data Socket and forwards validated updates to the active tab; the existing dated quote refresh remains the fallback. Daily movement uses the current quantity and FYERS previous close, not cash-flow-adjusted return. Totals are unavailable if a required price or previous close is missing. The socket closes when the tab is left or hidden, or when the hosting function reaches its duration limit; it reconnects after a short delay with backoff for repeated failures. Expired sessions require reconnecting in Settings. This initial implementation supports up to 100 symbols, shares a connection within one server process, and has not yet been verified during an open market. Separate server instances may open competing sockets; failures show saved prices. The last received prices are kept in memory while the portfolio view remains open, including across tab switches and reconnects; they are not persisted in browser storage. Column sorting is local to the view and defaults to Market price percentage, highest first; Market price sorts by the displayed 1D percentage and Returns sorts by the displayed return percentage, with unavailable percentages last.
+
 ## Caching and freshness
 
 The application uses the following caches, scoped to the authenticated portfolio. Transactions are authoritative user data; cached copies and market prices are derived data.

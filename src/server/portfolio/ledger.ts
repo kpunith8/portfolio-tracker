@@ -47,6 +47,7 @@ export type PortfolioReadOptions = {
   page: number;
   sort: "date" | "value";
   detailId?: string;
+  liveMarket?: boolean;
   asOf: string;
 };
 const PAGE_SIZE = 20;
@@ -183,7 +184,7 @@ export async function readPortfolio(options: PortfolioReadOptions) {
         SELECT x.instrument_id FROM positions x JOIN instruments i ON i.id=x.instrument_id
         LEFT JOIN price_observations p ON p.portfolio_id=i.portfolio_id AND p.instrument_id=i.id AND p.source='FYERS' AND p.interval_type='QUOTE'
         ORDER BY CASE WHEN ${options.sort}='value' THEN x.quantity*p.price END DESC NULLS LAST, CASE WHEN ${options.sort}='date' THEN x.latest END DESC, i.trading_symbol ASC
-        LIMIT ${PAGE_SIZE} OFFSET ${offset}
+        LIMIT ${options.liveMarket ? null : PAGE_SIZE} OFFSET ${options.liveMarket ? 0 : offset}
       ) SELECT (SELECT COUNT(*)::int FROM positions) AS total, COALESCE(json_agg(ordered.instrument_id) FILTER (WHERE ordered.instrument_id IS NOT NULL),'[]'::json) AS ids FROM ordered`;
       total = Number(rows[0]?.total ?? 0);
       ids = rows[0]?.ids ?? [];
@@ -200,6 +201,7 @@ export async function readPortfolio(options: PortfolioReadOptions) {
   if (
     options.view !== "dashboard" &&
     !details &&
+    !options.liveMarket &&
     page > Math.max(1, Math.ceil(total / PAGE_SIZE))
   ) {
     return readPortfolio({

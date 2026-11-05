@@ -41,3 +41,5 @@ The existing landing page is in `src/app/`; its portfolio reads stored transacti
 - Explain performance in terms of the user's actual transactions and available data.
 - Help users organize tax-preparation information without presenting incomplete calculations as final filing advice.
 - Keep recording and reviewing investments straightforward, including for assets that need manual valuations.
+
+The Live Market tab has an initial owner-only FYERS stream and 1D current-holdings market movement, with dated quote fallback. Open-market verification and cross-instance coordination remain pending.

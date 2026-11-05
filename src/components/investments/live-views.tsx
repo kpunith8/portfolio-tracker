@@ -7,8 +7,17 @@ import {
   refreshHistoricalPrice,
   refreshPortfolioQuotes,
 } from "../../app/dashboard/market-actions";
+import {
+  dailyMovement,
+  compareMarketPercent,
+  marketTotals,
+  returnPercent,
+  mergeMarketTick,
+  type MarketTick,
+} from "../../domain/live-market";
 import { currentHoldingValue, remainingLot } from "../../domain/holdings";
 import { displayCompanyName } from "../../domain/company-name";
+import { streamRetryDelay } from "../../domain/stream-retry";
 import { pendingHistoricalPeriods } from "../../domain/history-refresh";
 import dynamic from "next/dynamic";
 import { annualizedReturn, quantityAt, xirr } from "../../domain/returns";
@@ -18,6 +27,7 @@ import {
   ArrowDownWideNarrow,
   Check,
   ChevronDown,
+  ChevronUp,
   LoaderCircle,
   Trash2,
   X,
@@ -53,6 +63,7 @@ type Instrument = {
   id: string;
   name: string;
   trading_symbol: string;
+  fyers_symbol: string | null;
   unit: string;
   price: string | null;
   market_date: string | null;
@@ -456,6 +467,7 @@ export function LiveViews({
   data,
   view,
   detailId,
+  liveMarket,
   marketStatus,
   asOf,
   initialSort,
@@ -463,6 +475,7 @@ export function LiveViews({
   data: Data;
   view: "portfolio" | "transactions" | "dashboard";
   detailId?: string;
+  liveMarket: boolean;
   marketStatus: MarketStatus;
   asOf: string;
   initialSort: "date" | "value";
@@ -497,7 +510,11 @@ export function LiveViews({
       cancelled = true;
     };
   }, [view, router, detailId, pageKey]);
+  const [marketTicks, setMarketTicks] = useState<Record<string, MarketTick>>(
+    {},
+  );
   const [asset, setAsset] = useState("Stocks");
+  const activeAsset = liveMarket ? "Live Market" : asset;
   const sort = initialSort;
   const page = data.page;
   function navigateList(nextPage: number, nextSort: string) {
@@ -564,15 +581,17 @@ export function LiveViews({
           cost,
           value,
           profit: value?.minus(cost) ?? null,
-          latest: lots.reduce(
-            (latest, l) =>
-              l.transaction_date > latest ? l.transaction_date : latest,
-            "",
-          ),
+          latest: liveMarket
+            ? latestTrade
+            : lots.reduce(
+                (latest, l) =>
+                  l.transaction_date > latest ? l.transaction_date : latest,
+                "",
+              ),
         };
       })
       .filter((h) => h.quantity.gt(0));
-  }, [data, view]);
+  }, [data, view, liveMarket]);
   const sortedHoldings = useMemo(
     () =>
       [...holdings].sort((a, b) =>
@@ -664,10 +683,13 @@ export function LiveViews({
               <p>
                 {view === "transactions"
                   ? "Sales remain in your history."
-                  : "Expand a stock to review purchases and record a sale."}
+                  : liveMarket
+                    ? "Latest available FYERS prices for your holdings."
+                    : "Expand a stock to review purchases and record a sale."}
               </p>
               {view === "portfolio" &&
                 asset === "Stocks" &&
+                !liveMarket &&
                 quoteDates.length > 0 && (
                   <p>
                     {sharedQuoteDate
@@ -676,30 +698,46 @@ export function LiveViews({
                   </p>
                 )}
             </div>
-            <SortMenu
-              value={sort}
-              onChange={(value) => {
-                navigateList(1, value);
-              }}
-            />
+            {!liveMarket && (
+              <SortMenu
+                value={sort}
+                onChange={(value) => {
+                  navigateList(1, value);
+                }}
+              />
+            )}
           </div>
           {view === "portfolio" && (
             <div className="sample-tabs">
-              {["Stocks", "Mutual funds", "Debt & other"].map((t) => (
-                <button
-                  className={`sample-tab ${asset === t ? "active" : ""}`}
-                  aria-pressed={asset === t}
-                  key={t}
-                  onClick={() => {
-                    setAsset(t);
-                  }}
-                >
-                  {t}
-                </button>
-              ))}
+              {["Stocks", "Live Market", "Mutual funds", "Debt & other"].map(
+                (t) => (
+                  <button
+                    className={`sample-tab ${activeAsset === t ? "active" : ""}`}
+                    aria-pressed={activeAsset === t}
+                    key={t}
+                    onClick={() => {
+                      if (t === "Live Market")
+                        router.push("/dashboard?view=portfolio&tab=live");
+                      else {
+                        setAsset(t);
+                        if (liveMarket)
+                          router.push("/dashboard?view=portfolio");
+                      }
+                    }}
+                  >
+                    {t}
+                  </button>
+                ),
+              )}
             </div>
           )}
-          {view === "portfolio" && asset !== "Stocks" ? (
+          {view === "portfolio" && liveMarket ? (
+            <LiveMarket
+              holdings={holdings}
+              ticks={marketTicks}
+              setTicks={setMarketTicks}
+            />
+          ) : view === "portfolio" && asset !== "Stocks" ? (
             <div className="sample-empty">
               <h2>{asset} coming later</h2>
               <p>Stock investments are available now.</p>
@@ -910,7 +948,7 @@ export function LiveViews({
               </table>
             </div>
           )}
-          {data.total > PER_PAGE && (
+          {!liveMarket && data.total > PER_PAGE && (
             <nav className="page-controls" aria-label="Pagination">
               <button
                 disabled={currentPage === 1}
@@ -956,6 +994,367 @@ type Holding = {
   profit: Decimal | null;
   latest: string;
 };
+function LiveMarket({
+  holdings,
+  ticks,
+  setTicks,
+}: {
+  holdings: Holding[];
+  ticks: Record<string, MarketTick>;
+  setTicks: React.Dispatch<React.SetStateAction<Record<string, MarketTick>>>;
+}) {
+  useEffect(() => {
+    if (!holdings.length) return;
+    let stream: EventSource | null = null;
+    let retry: ReturnType<typeof setTimeout> | null = null;
+    let disposed = false;
+    let attempts = 0;
+    function disconnect() {
+      stream?.close();
+      stream = null;
+      if (retry) clearTimeout(retry);
+      retry = null;
+    }
+    function connect() {
+      if (disposed || document.hidden) return;
+      attempts += 1;
+      stream = new EventSource("/api/fyers/stream");
+      const source = stream;
+      const failed = () => {
+        if (source !== stream) return;
+        source.close();
+        stream = null;
+        if (!disposed && !document.hidden && attempts < 5)
+          retry = setTimeout(connect, streamRetryDelay(attempts));
+      };
+      source.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data) as {
+            status?: string;
+            tick?: MarketTick;
+          };
+          if (data.tick) {
+            const tick = data.tick;
+            setTicks((old) => ({
+              ...old,
+              [tick.symbol]: mergeMarketTick(old[tick.symbol], tick),
+            }));
+          } else if (data.status === "error" || data.status === "closed")
+            failed();
+          else if (data.status === "connected") {
+            attempts = 0;
+          }
+        } catch {
+          failed();
+        }
+      };
+      source.onerror = failed;
+    }
+    function visibilityChanged() {
+      if (document.hidden) {
+        disconnect();
+      } else connect();
+    }
+    document.addEventListener("visibilitychange", visibilityChanged);
+    connect();
+    return () => {
+      disposed = true;
+      document.removeEventListener("visibilitychange", visibilityChanged);
+      disconnect();
+    };
+  }, [holdings.length, setTicks]);
+  const activeHoldings = holdings.map((h) => {
+    const tick = h.i.fyers_symbol ? ticks[h.i.fyers_symbol] : undefined;
+    if (
+      !tick ||
+      tick.marketDate < h.latest ||
+      (h.i.market_date && tick.marketDate < h.i.market_date)
+    )
+      return h;
+    const value = h.quantity.mul(tick.price);
+    return {
+      ...h,
+      i: { ...h.i, price: tick.price, market_date: tick.marketDate },
+      value,
+      profit: value.minus(h.cost),
+    };
+  });
+  const daily = activeHoldings.map((h) => {
+    const tick = h.i.fyers_symbol ? ticks[h.i.fyers_symbol] : undefined;
+    return tick &&
+      tick.marketDate >= h.latest &&
+      tick.marketDate === h.i.market_date
+      ? dailyMovement(h.quantity.toString(), tick.price, tick.previousClose)
+      : null;
+  });
+  const dailyById = new Map(
+    activeHoldings.map((h, index) => [h.i.id, daily[index]]),
+  );
+  const dayDates = new Set(
+    activeHoldings.flatMap((h) =>
+      h.i.fyers_symbol && ticks[h.i.fyers_symbol]
+        ? [ticks[h.i.fyers_symbol].marketDate]
+        : [],
+    ),
+  );
+  const dayComplete =
+    daily.length > 0 && daily.every((d) => d !== null) && dayDates.size === 1;
+  const dayAmount = dayComplete
+    ? daily.reduce((sum, d) => sum.plus(d!.amount), n("0"))
+    : null;
+  const dayBase = dayComplete
+    ? activeHoldings.reduce(
+        (sum, h) =>
+          sum.plus(h.quantity.mul(ticks[h.i.fyers_symbol!].previousClose!)),
+        n("0"),
+      )
+    : null;
+
+  const [sort, setSort] = useState<{
+    key: "company" | "price" | "returns" | "current";
+    ascending: boolean;
+  }>({ key: "price", ascending: false });
+  const { invested, current, profit } = marketTotals(
+    activeHoldings.map((h) => ({
+      cost: h.cost.toString(),
+      value: h.value?.toString() ?? null,
+    })),
+  );
+  const returnsById = new Map(
+    activeHoldings.map((h) => [h.i.id, returnPercent(h.profit, h.cost)]),
+  );
+  const rows = [...activeHoldings].sort((a, b) => {
+    if (sort.key === "company")
+      return (
+        (sort.ascending ? 1 : -1) *
+        displayCompanyName(a.i.name).localeCompare(displayCompanyName(b.i.name))
+      );
+    if (sort.key === "price")
+      return compareMarketPercent(
+        dailyById.get(a.i.id)?.percent ?? null,
+        dailyById.get(b.i.id)?.percent ?? null,
+        sort.ascending,
+      );
+    if (sort.key === "returns")
+      return compareMarketPercent(
+        returnsById.get(a.i.id) ?? null,
+        returnsById.get(b.i.id) ?? null,
+        sort.ascending,
+      );
+    const get = (h: Holding) => h.value;
+    const left = get(a),
+      right = get(b);
+    if (left === null || right === null)
+      return left === right ? 0 : left === null ? 1 : -1;
+    return (sort.ascending ? 1 : -1) * left.cmp(right);
+  });
+  const headers = [
+    ["company", "Company"],
+    ["price", "Market price (1D%)"],
+    ["returns", "Returns (%)"],
+    ["current", "Current (Invested)"],
+  ] as const;
+  return (
+    <>
+      <p className="panel-note live-market-note">
+        Prices show the latest available FYERS updates and may be delayed. Daily
+        movement reflects current holdings and may be unavailable when previous
+        closes are missing.
+      </p>
+      <section
+        className="overview-metrics live-market-summary"
+        aria-label="Market summary"
+      >
+        <div>
+          <span>Current value</span>
+          <strong>{fmt(current)}</strong>
+          <small>Invested {fmt(invested)}</small>
+        </div>
+        <div>
+          <span>1D returns</span>
+          <strong
+            className={
+              dayAmount === null
+                ? ""
+                : dayAmount.isNegative()
+                  ? "sample-negative"
+                  : "sample-positive"
+            }
+          >
+            {fmt(dayAmount)}
+          </strong>
+          <small
+            className={
+              dayAmount === null
+                ? ""
+                : dayAmount.isNegative()
+                  ? "sample-negative"
+                  : "sample-positive"
+            }
+          >
+            {dayAmount && dayBase && !dayBase.isZero()
+              ? `(${dayAmount.div(dayBase).mul(100).toFixed(2)}%)`
+              : "Previous closes unavailable"}
+          </small>
+        </div>
+        <div>
+          <span>Total returns</span>
+          <strong
+            className={
+              profit === null
+                ? ""
+                : profit.isNegative()
+                  ? "sample-negative"
+                  : "sample-positive"
+            }
+          >
+            {fmt(profit)}
+          </strong>
+          <small
+            className={
+              profit === null
+                ? ""
+                : profit.isNegative()
+                  ? "sample-negative"
+                  : "sample-positive"
+            }
+          >
+            {profit && !invested.isZero()
+              ? `(${profit.div(invested).mul(100).toFixed(2)}%)`
+              : "Unavailable"}
+          </small>
+        </div>
+      </section>
+      {holdings.length === 0 ? (
+        <div className="sample-empty">
+          <h2>No investments yet</h2>
+          <p>Record a purchase to start your portfolio.</p>
+        </div>
+      ) : (
+        <div
+          className="live-market-scroll"
+          tabIndex={0}
+          aria-label="Scrollable market table"
+        >
+          <table className="sample-transactions live-market-table">
+            <thead>
+              <tr>
+                {headers.map(([key, label]) => (
+                  <th
+                    key={key}
+                    scope="col"
+                    aria-sort={
+                      sort.key === key
+                        ? sort.ascending
+                          ? "ascending"
+                          : "descending"
+                        : "none"
+                    }
+                  >
+                    <button
+                      type="button"
+                      className={
+                        sort.key === key ? "live-market-sort-active" : undefined
+                      }
+                      onClick={() =>
+                        setSort((old) => ({
+                          key,
+                          ascending:
+                            old.key === key
+                              ? !old.ascending
+                              : key === "company",
+                        }))
+                      }
+                    >
+                      {label}{" "}
+                      {sort.key === key && sort.ascending ? (
+                        <ChevronUp size={14} aria-hidden="true" />
+                      ) : (
+                        <ChevronDown size={14} aria-hidden="true" />
+                      )}
+                    </button>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((h) => (
+                <tr key={h.i.id}>
+                  <td>
+                    <Link
+                      className="text-link"
+                      href={`/dashboard?view=portfolio&instrument=${h.i.id}`}
+                    >
+                      {displayCompanyName(h.i.name)}
+                    </Link>
+                    <small>
+                      {h.quantity.toString()}{" "}
+                      {h.i.unit === "unit" ? "units" : "shares"} · Avg.{" "}
+                      {fmt(h.cost.div(h.quantity))}
+                    </small>
+                  </td>
+                  <td>
+                    {h.i.price ? fmt(n(h.i.price)) : "Unavailable"}
+                    {(() => {
+                      const tick = h.i.fyers_symbol
+                        ? ticks[h.i.fyers_symbol]
+                        : undefined;
+                      const movement =
+                        tick &&
+                        tick.marketDate >= h.latest &&
+                        tick.marketDate === h.i.market_date
+                          ? dailyMovement(
+                              h.quantity.toString(),
+                              tick.price,
+                              tick.previousClose,
+                            )
+                          : null;
+                      return (
+                        <small
+                          className={
+                            movement
+                              ? movement.change.isNegative()
+                                ? "sample-negative"
+                                : "sample-positive"
+                              : ""
+                          }
+                        >
+                          {movement
+                            ? `${fmt(movement.change)} (${movement.percent.toFixed(2)}%)`
+                            : `1D unavailable${h.i.market_date ? ` · ${date(h.i.market_date)}` : ""}`}
+                        </small>
+                      );
+                    })()}
+                  </td>
+                  <td
+                    className={
+                      h.profit === null
+                        ? ""
+                        : h.profit.isNegative()
+                          ? "sample-negative"
+                          : "sample-positive"
+                    }
+                  >
+                    {fmt(h.profit)}
+                    <small>
+                      {returnsById.get(h.i.id) == null
+                        ? "Unavailable"
+                        : `${returnsById.get(h.i.id)!.toFixed(2)}%`}
+                    </small>
+                  </td>
+                  <td>
+                    {fmt(h.value)}
+                    <small>{fmt(h.cost)}</small>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </>
+  );
+}
 function MarketNotice({ status }: { status: MarketStatus }) {
   if (status === "current" || status === "cached") return null;
   return (

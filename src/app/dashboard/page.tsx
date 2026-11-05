@@ -35,6 +35,7 @@ export default async function Dashboard({
     instrument?: string;
     page?: string;
     sort?: string;
+    tab?: string;
   }>;
 }) {
   const auth = getKindeServerSession();
@@ -109,6 +110,7 @@ export default async function Dashboard({
           <DashboardContent
             view={view}
             instrument={params.instrument}
+            liveMarket={params.tab === "live" && !params.instrument}
             page={page}
             sort={sort}
             asOf={asOf}
@@ -122,12 +124,14 @@ export default async function Dashboard({
 async function DashboardContent({
   view,
   instrument,
+  liveMarket,
   page,
   sort,
   asOf,
 }: {
   view: string;
   instrument?: string;
+  liveMarket: boolean;
   page: number;
   sort: "date" | "value";
   asOf: string;
@@ -146,6 +150,7 @@ async function DashboardContent({
         page,
         sort,
         detailId: instrument,
+        liveMarket: view === "portfolio" && liveMarket,
         asOf,
       });
   } catch {
@@ -192,6 +197,7 @@ async function DashboardContent({
           }
           view={view as "portfolio" | "transactions" | "dashboard"}
           detailId={instrument}
+          liveMarket={view === "portfolio" && liveMarket}
           marketStatus={marketStatus}
           asOf={asOf}
           initialSort={sort}

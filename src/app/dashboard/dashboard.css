@@ -2442,3 +2442,61 @@ td:nth-child(n + 3) {
     animation: none;
   }
 }
+
+.live-market-note {
+  padding: 20px 26px 16px;
+}
+.live-market-summary {
+  margin: 0 26px;
+}
+.live-market-scroll {
+  overflow-x: auto;
+  margin-top: 24px;
+}
+.live-market-table {
+  min-width: 720px;
+}
+.live-market-table th:not(:first-child),
+.live-market-table td:not(:first-child) {
+  text-align: right;
+}
+.live-market-table th button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.live-market-table th button.live-market-sort-active {
+  color: #24663f;
+  font-weight: 700;
+}
+.live-market-table th button:focus-visible {
+  outline: 2px solid #347b58;
+  outline-offset: 4px;
+  border-radius: 2px;
+}
+.live-market-table tbody td,
+.live-market-table tbody .text-link {
+  font-size: 15px;
+  font-weight: 600;
+}
+.live-market-table small {
+  display: block;
+  margin-top: 6px;
+  color: #51665a;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+@media (max-width: 600px) {
+  .live-market-note {
+    padding: 18px 18px 14px;
+  }
+  .live-market-summary {
+    margin: 0 18px;
+  }
+}
