@@ -1,3 +1,4 @@
+import { portfolioPage } from "../../domain/pagination";
 import { LogoutLink } from "@kinde-oss/kinde-auth-nextjs/components";
 import { getKindeServerSession } from "@kinde-oss/kinde-auth-nextjs/server";
 import {
@@ -44,11 +45,7 @@ export default async function Dashboard({
   const user = await auth.getUser();
   const params = await searchParams;
   const asOf = currentMarketDay();
-  const requestedPage = Number(params.page ?? "1");
-  const page =
-    Number.isSafeInteger(requestedPage) && requestedPage > 0
-      ? Math.min(requestedPage, 100000)
-      : 1;
+  const { page } = portfolioPage(Number(params.page ?? "1"));
   const sort = params.sort === "value" ? "value" : "date";
   const requested = params.view;
   const view = nav.some((n) => n.view === requested) ? requested! : "dashboard";

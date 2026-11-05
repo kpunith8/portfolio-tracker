@@ -9,10 +9,20 @@ Each authenticated user will have an independent portfolio. Transactions are ent
 ## Development
 
 - Install dependencies with `npm ci`; run locally with `npm run dev`.
-- Verify relevant changes with `npm run lint`, `npm run format:check`, `npm run typecheck`, and `npm run build`. Add focused tests when implementing financial logic, security, or other nontrivial behavior.
+- Verify relevant changes with `npm run lint`, `npm run format:check`, `npm run typecheck`, and `npm run build`; run `npm run test:unit` and `npm run test:server` when their code is affected. Add focused tests when implementing financial logic, security, or other nontrivial behavior.
 - Keep changes incremental and consistent with the existing TypeScript and App Router structure. Add dependencies when a feature needs them, and update the lockfile.
 - Use `lucide-react` for icons. Keep interfaces responsive and keyboard accessible, provide accessible names for icon-only controls, and respect reduced-motion preferences. Example data must be clearly labeled.
 - Keep secrets and local environment files out of Git. Integrations and database access belong on the server; validate inputs and authorize every user-scoped read and mutation.
+
+## Refactoring and architecture
+
+- Apply DRY, loose coupling, maintainable interfaces, and testability when implementing features and fixing bugs as well as during refactoring. First inspect related code across the repository for existing components, workflows, query functions, and helpers to reuse or improve; a referenced file is context, not an automatic limit on that review.
+- Extract genuinely shared behavior into focused, composable components, hooks, or helpers with names that describe their responsibility (for example, price or portfolio utilities). Keep presentation, domain rules, data access, and provider concerns separated where this makes them easier to evolve and test. Prefer extending existing interfaces compatibly; avoid speculative abstractions, forced deduplication, and unnecessary complexity.
+- While making a feature or bug fix, address related duplication and coupling where doing so is useful and safe within the task. Preserve existing behavior outside the requested change and keep changes incremental and reviewable; if a broader refactor is unsafe or unrelated, document the opportunity rather than silently expanding scope.
+- Treat refactoring requests as repository-wide reviews unless the user explicitly limits their scope; a tagged file is an example, not an automatic boundary. Review related client, server, route, and shared code and apply consistent improvements where useful, preserving behavior.
+- Put multi-step server workflows and route handlers above focused, named server-only data-access functions. Keep parameterized SQL and user authorization at the data boundary; keep simple existing functions that already serve as focused queries, and avoid speculative generic query builders or extra wrappers.
+- Extract shared logic into narrowly named helpers or React hooks when there is a real shared responsibility. Use React hooks only in React components or hooks; do not use `useMemo` or `useCallback` for ordinary server functions, and add memoization only when it has a demonstrated benefit and correct scope.
+- Preserve cache identity, invalidation, provider rate coordination, transaction atomicity, and error behavior when refactoring. Add meaningful tests and verify affected flows; do not use production user data for mutation tests.
 
 ## Caching and freshness
 

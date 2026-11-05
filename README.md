@@ -29,6 +29,8 @@ npm run lint       # Run ESLint
 npm run format     # Format source files
 npm run format:check # Check source formatting
 npm run typecheck  # Check TypeScript types
+npm run test:unit  # Run domain tests
+npm run test:server # Check server query contracts (Node.js 22.15 or newer)
 npm run test:e2e   # Run Playwright tests once they are added
 ```
 
@@ -78,6 +80,12 @@ The FYERS session token is stored in an encrypted, HTTP-only, user-bound cookie;
 GitHub Actions runs lint, formatting, TypeScript, and production build checks. Playwright is configured for Chromium, but its CI job remains disabled until browser tests and test authentication are added. To run future tests locally, install the browser once with `npx playwright install chromium`, add tests under `tests/e2e/`, and run `npm run test:e2e`. The CI build uses non-production Kinde placeholder values when repository secrets are absent.
 
 ## Keeping documentation current
+
+Shared domain helpers in `src/domain/identifier-utils.ts`, `market-date-utils.ts`, and `price-utils.ts` contain identifier, market-date, and provider-price rules used across views and server paths. The live-market stream lifecycle lives in `src/components/investments/use-live-market-stream.ts`. Server authentication and database access live under `src/server/auth` and `src/server/db`; FYERS request and rate-limit coordination live under `src/server/fyers`. Portfolio-scoped queries, provider-specific parsing, and refresh policies remain with their respective features.
+
+Portfolio reads are orchestrated in `src/server/portfolio/ledger.ts`; the named, user-scoped SQL queries live in `src/server/portfolio/queries.ts`. Shared page size, page normalization, and page-count rules live in `src/domain/pagination.ts` and are used by both the server and the page controls. Other server workflows use focused query modules alongside their market-data and portfolio services; simple portfolio identity and rate-limit functions keep their own SQL. The dashboard ledger cache remains user-specific; portfolio, transaction, and detail reads remain direct.
+
+Shared table presentation primitives live in `src/components/ui/table.tsx`. `TableScroll` supplies a named keyboard-focusable scroll region; `TableHeader` covers static column headings. Views retain their own rows, sorting, data fetching, and financial calculations, and can compose custom headings when needed.
 
 When changing a feature, setup, behavior, architecture, or development workflow, update the relevant documentation in the same change. Record reproducible gotchas and limitations without secrets. Use `AGENTS.md` for contributor guidance, this README for current setup and implemented behavior, and `docs/technical-specification.md` / `tasks/` for architecture and delivery status. The pull request template prompts this review; it does not automatically determine whether documentation is accurate.
 

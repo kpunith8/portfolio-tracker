@@ -1,5 +1,7 @@
 "use client";
 
+import { formatRecordedDate as labelDate } from "../../domain/market-date-utils";
+
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -21,13 +23,6 @@ type Point = {
 };
 const ranges = ["7D", "30D", "3M", "6M", "1Y", "All"] as const;
 type Range = (typeof ranges)[number];
-const labelDate = (day: string) =>
-  new Date(`${day}T00:00:00Z`).toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  });
 const money = (value: string) => {
   const [integer, fraction] = new Decimal(value).toFixed(2).split(".");
   return `₹${integer.replace(/\B(?=(\d{2})+(\d)(?!\d))/g, ",")}.${fraction}`;

@@ -1,10 +1,13 @@
 "use server";
-import { revalidatePath, updateTag } from "next/cache";
 import {
-  database,
-  ledgerCacheTag,
-  subject,
-} from "../../server/portfolio/ledger";
+  deletePurchaseRecord,
+  recordTradeEntry,
+} from "../../server/portfolio/trade-queries";
+import { isUuid } from "../../domain/identifier-utils";
+import { revalidatePath, updateTag } from "next/cache";
+import { ledgerCacheTag } from "../../server/portfolio/ledger";
+import { database } from "../../server/db/database";
+import { subject } from "../../server/auth/subject";
 
 type Result = { error?: string; success?: boolean };
 export async function deletePurchase(
@@ -12,14 +15,11 @@ export async function deletePurchase(
   form: FormData,
 ): Promise<Result> {
   const id = String(form.get("id") || "");
-  if (
-    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
-  )
-    return { error: "Purchase not found." };
+  if (!isUuid(id)) return { error: "Purchase not found." };
   try {
     const user = await subject();
     const sql = database();
-    await sql`SELECT delete_portfolio_purchase(${user}, ${id}::uuid)`;
+    await deletePurchaseRecord(sql, user, id);
     updateTag(ledgerCacheTag(user));
     revalidatePath("/dashboard");
     return { success: true };
@@ -51,14 +51,12 @@ export async function recordTrade(
   const price = String(form.get("price") || "").trim();
   const date = String(form.get("date") || "");
   const lot = String(form.get("lot") || "");
-  const uuid =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   if (!/^\d{1,18}$/.test(quantity) || /^0+$/.test(quantity))
     return { error: "Enter a positive whole-number quantity." };
   if (
     !["BUY", "SELL"].includes(type) ||
-    (instrument && !uuid.test(instrument)) ||
-    (lot && !uuid.test(lot)) ||
+    (instrument && !isUuid(instrument)) ||
+    (lot && !isUuid(lot)) ||
     (!instrument && (type !== "BUY" || !/^[A-Z0-9&-]{1,30}$/.test(symbol))) ||
     !/^\d{1,16}(\.\d{1,8})?$/.test(price) ||
     !/^\d{4}-\d{2}-\d{2}$/.test(date)
@@ -67,7 +65,17 @@ export async function recordTrade(
   try {
     const user = await subject();
     const sql = database();
-    await sql`SELECT record_portfolio_trade(${user},${type},${instrument || null}::uuid,${symbol || null},${quantity}::numeric,${price}::numeric,${date}::date,${lot || null}::uuid)`;
+    await recordTradeEntry(
+      sql,
+      user,
+      type,
+      instrument || null,
+      symbol || null,
+      quantity,
+      price,
+      date,
+      lot || null,
+    );
     updateTag(ledgerCacheTag(user));
     revalidatePath("/dashboard");
     return { success: true };

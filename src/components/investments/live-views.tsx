@@ -1,5 +1,13 @@
 "use client";
 
+import {
+  PORTFOLIO_PAGE_SIZE,
+  portfolioPageCount,
+} from "../../domain/pagination";
+
+import { formatRecordedDate as date } from "../../domain/market-date-utils";
+
+import { TableHeader, TableScroll } from "../ui/table";
 import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -9,15 +17,14 @@ import {
 } from "../../app/dashboard/market-actions";
 import {
   dailyMovement,
-  compareMarketPercent,
+  compareNullableDecimal,
   marketTotals,
   returnPercent,
-  mergeMarketTick,
   type MarketTick,
 } from "../../domain/live-market";
 import { currentHoldingValue, remainingLot } from "../../domain/holdings";
 import { displayCompanyName } from "../../domain/company-name";
-import { streamRetryDelay } from "../../domain/stream-retry";
+import { useLiveMarketStream } from "./use-live-market-stream";
 import { pendingHistoricalPeriods } from "../../domain/history-refresh";
 import dynamic from "next/dynamic";
 import { annualizedReturn, quantityAt, xirr } from "../../domain/returns";
@@ -118,13 +125,6 @@ const fmt = (v: Decimal | null) => {
       : whole;
   return `${v.isNegative() ? "−" : ""}₹${grouped}.${fraction}`;
 };
-const date = (s: string) =>
-  new Date(`${s}T00:00:00Z`).toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  });
 const tickerTone = (symbol: string) => {
   let hash = 0;
   for (const character of symbol)
@@ -147,7 +147,6 @@ async function refreshQuotesWithRetry() {
     await new Promise<void>((resolve) => setTimeout(resolve, 2200));
   }
 }
-const PER_PAGE = 20;
 const sortOptions = [
   { value: "date", label: "Date, newest first" },
   { value: "value", label: "Current asset value" },
@@ -811,17 +810,17 @@ export function LiveViews({
                         <table
                           aria-label={`Purchases for ${h.i.trading_symbol}`}
                         >
-                          <thead>
-                            <tr>
-                              <th>Date</th>
-                              <th>Quantity remaining</th>
-                              <th>Buy price</th>
-                              <th>Invested</th>
-                              <th>Current value</th>
-                              <th>Current P&amp;L</th>
-                              <th>Action</th>
-                            </tr>
-                          </thead>
+                          <TableHeader
+                            columns={[
+                              "Date",
+                              "Quantity remaining",
+                              "Buy price",
+                              "Invested",
+                              "Current value",
+                              "Current P&L",
+                              "Action",
+                            ]}
+                          />
                           <tbody>
                             {h.lots.map((l) => (
                               <tr key={l.id}>
@@ -908,22 +907,21 @@ export function LiveViews({
               ))}
             </div>
           ) : (
-            <div
+            <TableScroll
               className="sample-transaction-scroll"
-              tabIndex={0}
-              aria-label="Scrollable transaction table"
+              label="Scrollable transaction table"
             >
               <table className="sample-transactions">
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Stock</th>
-                    <th>Type</th>
-                    <th>Quantity</th>
-                    <th>Price</th>
-                    <th>Current asset value</th>
-                  </tr>
-                </thead>
+                <TableHeader
+                  columns={[
+                    "Date",
+                    "Stock",
+                    "Type",
+                    "Quantity",
+                    "Price",
+                    "Current asset value",
+                  ]}
+                />
                 <tbody>
                   {orderedTransactions.map((t) => {
                     const i = data.instruments.find(
@@ -946,9 +944,9 @@ export function LiveViews({
                   })}
                 </tbody>
               </table>
-            </div>
+            </TableScroll>
           )}
-          {!liveMarket && data.total > PER_PAGE && (
+          {!liveMarket && data.total > PORTFOLIO_PAGE_SIZE && (
             <nav className="page-controls" aria-label="Pagination">
               <button
                 disabled={currentPage === 1}
@@ -957,10 +955,10 @@ export function LiveViews({
                 Previous
               </button>
               <span>
-                Page {currentPage} of {Math.ceil(data.total / PER_PAGE)}
+                Page {currentPage} of {portfolioPageCount(data.total)}
               </span>
               <button
-                disabled={currentPage * PER_PAGE >= data.total}
+                disabled={currentPage * PORTFOLIO_PAGE_SIZE >= data.total}
                 onClick={() => navigateList(currentPage + 1, sort)}
               >
                 Next
@@ -1003,66 +1001,7 @@ function LiveMarket({
   ticks: Record<string, MarketTick>;
   setTicks: React.Dispatch<React.SetStateAction<Record<string, MarketTick>>>;
 }) {
-  useEffect(() => {
-    if (!holdings.length) return;
-    let stream: EventSource | null = null;
-    let retry: ReturnType<typeof setTimeout> | null = null;
-    let disposed = false;
-    let attempts = 0;
-    function disconnect() {
-      stream?.close();
-      stream = null;
-      if (retry) clearTimeout(retry);
-      retry = null;
-    }
-    function connect() {
-      if (disposed || document.hidden) return;
-      attempts += 1;
-      stream = new EventSource("/api/fyers/stream");
-      const source = stream;
-      const failed = () => {
-        if (source !== stream) return;
-        source.close();
-        stream = null;
-        if (!disposed && !document.hidden && attempts < 5)
-          retry = setTimeout(connect, streamRetryDelay(attempts));
-      };
-      source.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data) as {
-            status?: string;
-            tick?: MarketTick;
-          };
-          if (data.tick) {
-            const tick = data.tick;
-            setTicks((old) => ({
-              ...old,
-              [tick.symbol]: mergeMarketTick(old[tick.symbol], tick),
-            }));
-          } else if (data.status === "error" || data.status === "closed")
-            failed();
-          else if (data.status === "connected") {
-            attempts = 0;
-          }
-        } catch {
-          failed();
-        }
-      };
-      source.onerror = failed;
-    }
-    function visibilityChanged() {
-      if (document.hidden) {
-        disconnect();
-      } else connect();
-    }
-    document.addEventListener("visibilitychange", visibilityChanged);
-    connect();
-    return () => {
-      disposed = true;
-      document.removeEventListener("visibilitychange", visibilityChanged);
-      disconnect();
-    };
-  }, [holdings.length, setTicks]);
+  useLiveMarketStream(holdings.length, setTicks);
   const activeHoldings = holdings.map((h) => {
     const tick = h.i.fyers_symbol ? ticks[h.i.fyers_symbol] : undefined;
     if (
@@ -1130,23 +1069,18 @@ function LiveMarket({
         displayCompanyName(a.i.name).localeCompare(displayCompanyName(b.i.name))
       );
     if (sort.key === "price")
-      return compareMarketPercent(
+      return compareNullableDecimal(
         dailyById.get(a.i.id)?.percent ?? null,
         dailyById.get(b.i.id)?.percent ?? null,
         sort.ascending,
       );
     if (sort.key === "returns")
-      return compareMarketPercent(
+      return compareNullableDecimal(
         returnsById.get(a.i.id) ?? null,
         returnsById.get(b.i.id) ?? null,
         sort.ascending,
       );
-    const get = (h: Holding) => h.value;
-    const left = get(a),
-      right = get(b);
-    if (left === null || right === null)
-      return left === right ? 0 : left === null ? 1 : -1;
-    return (sort.ascending ? 1 : -1) * left.cmp(right);
+    return compareNullableDecimal(a.value, b.value, sort.ascending);
   });
   const headers = [
     ["company", "Company"],
@@ -1231,10 +1165,9 @@ function LiveMarket({
           <p>Record a purchase to start your portfolio.</p>
         </div>
       ) : (
-        <div
+        <TableScroll
           className="live-market-scroll"
-          tabIndex={0}
-          aria-label="Scrollable market table"
+          label="Scrollable market table"
         >
           <table className="sample-transactions live-market-table">
             <thead>
@@ -1350,7 +1283,7 @@ function LiveMarket({
               ))}
             </tbody>
           </table>
-        </div>
+        </TableScroll>
       )}
     </>
   );
@@ -1881,22 +1814,21 @@ function InstrumentDetails({
           result cannot be found.
         </p>
         <p className="scroll-hint">Scroll sideways to see all columns.</p>
-        <div
+        <TableScroll
           className="sample-transaction-scroll"
-          tabIndex={0}
-          aria-label="Scrollable purchase table"
+          label="Scrollable purchase table"
         >
           <table className="sample-transactions purchase-return-table">
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Quantity</th>
-                <th>Price</th>
-                <th>Amount</th>
-                <th>Current P&amp;L</th>
-                <th>CAGR</th>
-              </tr>
-            </thead>
+            <TableHeader
+              columns={[
+                "Date",
+                "Quantity",
+                "Price",
+                "Amount",
+                "Current P&L",
+                "CAGR",
+              ]}
+            />
             <tbody>
               {trades
                 .filter((t) => t.type === "BUY")
@@ -1966,7 +1898,7 @@ function InstrumentDetails({
                 })}
             </tbody>
           </table>
-        </div>
+        </TableScroll>
         <p className="panel-note performance-note">
           A dash means there are no shares remaining, a price or cost is
           unavailable, or there is not enough time to calculate an annualized
