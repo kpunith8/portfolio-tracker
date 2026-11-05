@@ -1,3 +1,4 @@
+import { isProductionStream } from "../../domain/stream-retry";
 import { portfolioPage } from "../../domain/pagination";
 import { LogoutLink } from "@kinde-oss/kinde-auth-nextjs/components";
 import { getKindeServerSession } from "@kinde-oss/kinde-auth-nextjs/server";
@@ -189,6 +190,7 @@ async function DashboardContent({
         </section>
       ) : data ? (
         <LiveViews
+          retryLiveStream={isProductionStream(process.env.VERCEL_ENV)}
           data={
             data as unknown as React.ComponentProps<typeof LiveViews>["data"]
           }
