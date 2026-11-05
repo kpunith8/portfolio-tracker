@@ -1099,19 +1099,14 @@ function LiveMarket({
   ] as const;
   return (
     <>
-      {holdings.length > 0 && (
-        <p className="panel-note" role="status">
-          {streamStatus === "live"
-            ? "Live market updates connected."
-            : streamStatus === "connected"
-              ? "Connected to FYERS; waiting for live prices. Showing latest available quotes."
-              : streamStatus === "unavailable"
-                ? "Live market updates unavailable. Showing latest available quotes. Reopen Live Market to retry."
-                : streamStatus === "reconnecting"
-                  ? "Reconnecting live market updates. Showing latest available quotes."
-                  : "Connecting live market updates. Showing latest available quotes."}
-        </p>
-      )}
+      {holdings.length > 0 &&
+        (streamStatus === "unavailable" || streamStatus === "reconnecting") && (
+          <p className="panel-note" role="status">
+            {streamStatus === "unavailable"
+              ? "Live market updates unavailable. Showing latest available quotes. Reopen Live Market to retry."
+              : "Reconnecting live market updates. Showing latest available quotes."}
+          </p>
+        )}
       <p className="panel-note live-market-note">
         Prices show the latest available FYERS updates and may be delayed. Daily
         movement reflects current holdings and may be unavailable when previous
