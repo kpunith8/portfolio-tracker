@@ -30,6 +30,7 @@ test("only missing, stale, or unavailable periods need a refresh", () => {
       status: "AVAILABLE",
     },
   ];
+
   assert.deepEqual(
     pendingHistoricalPeriods(periods, entries, "a", "2026-11-03"),
     ["30D", "90D", "6M", "365D"],

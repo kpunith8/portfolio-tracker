@@ -39,6 +39,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import { PurchaseEntry } from "./purchase-entry";
 import { deletePurchase, recordTrade } from "../../app/dashboard/trade-actions";
 
 Decimal.set({ precision: 64, rounding: Decimal.ROUND_HALF_UP });
@@ -76,6 +77,7 @@ type Instrument = {
   market_date: string | null;
   retrieved_at: string | null;
 };
+
 type Transaction = {
   id: string;
   instrument_id: string;
@@ -90,6 +92,7 @@ type Transaction = {
   sale_cost: string | null;
   charges_missing: boolean | null;
 };
+
 type Baseline = {
   instrument_id: string;
   period: string;
@@ -99,6 +102,7 @@ type Baseline = {
   price: string | null;
   status: string;
 };
+
 type Data = {
   instruments: Instrument[];
   transactions: Transaction[];
@@ -113,9 +117,12 @@ type Data = {
   total: number;
   page: number;
 };
+
 const n = (s: string) => new Decimal(s);
+
 const fmt = (v: Decimal | null) => {
   if (v === null) return "Unavailable";
+
   const [whole, fraction] = v.abs().toFixed(2).split(".");
   const grouped =
     whole.length > 3
@@ -123,19 +130,26 @@ const fmt = (v: Decimal | null) => {
         "," +
         whole.slice(-3)
       : whole;
+
   return `${v.isNegative() ? "−" : ""}₹${grouped}.${fraction}`;
 };
+
 const tickerTone = (symbol: string) => {
   let hash = 0;
+
   for (const character of symbol)
     hash = (hash * 31 + character.charCodeAt(0)) >>> 0;
+
   return hash % 8;
 };
+
 async function refreshQuotesWithRetry() {
   let throttled = 0;
   let updated = false;
+
   while (true) {
     const status = await refreshPortfolioQuotes();
+
     if (status === "more") {
       updated = true;
       throttled = 0;
@@ -144,9 +158,11 @@ async function refreshQuotesWithRetry() {
     } else {
       return status === "cached" && updated ? "current" : status;
     }
+
     await new Promise<void>((resolve) => setTimeout(resolve, 2200));
   }
 }
+
 const sortOptions = [
   { value: "date", label: "Date, newest first" },
   { value: "value", label: "Current asset value" },
@@ -165,12 +181,14 @@ function SortMenu({
   const items = useRef<Array<HTMLButtonElement | null>>([]);
   const selected =
     sortOptions.find((option) => option.value === value) ?? sortOptions[0];
+
   useEffect(() => {
     if (open)
       items.current[
         sortOptions.findIndex((option) => option.value === selected.value)
       ]?.focus();
   }, [open, selected.value]);
+
   return (
     <div
       className="sort-menu"
@@ -203,6 +221,7 @@ function SortMenu({
             const current = items.current.findIndex(
               (item) => item === document.activeElement,
             );
+
             if (event.key === "Escape") {
               event.preventDefault();
               setOpen(false);
@@ -211,6 +230,7 @@ function SortMenu({
               ["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)
             ) {
               event.preventDefault();
+
               const next =
                 event.key === "Home"
                   ? 0
@@ -220,6 +240,7 @@ function SortMenu({
                         (event.key === "ArrowDown" ? 1 : -1) +
                         sortOptions.length) %
                       sortOptions.length;
+
               items.current[next]?.focus();
             }
           }}
@@ -252,6 +273,7 @@ function SortMenu({
     </div>
   );
 }
+
 function DeletePurchaseModal({
   lot,
   close,
@@ -262,6 +284,7 @@ function DeletePurchaseModal({
   const dialog = useRef<HTMLDialogElement>(null);
   const [state, action, pending] = useActionState(deletePurchase, {});
   const router = useRouter();
+
   useEffect(() => {
     dialog.current?.showModal();
   }, []);
@@ -271,6 +294,7 @@ function DeletePurchaseModal({
       close();
     }
   }, [state.success, router, close]);
+
   return (
     <dialog ref={dialog} className="trade-dialog" onClose={close}>
       <div className="trade-dialog-header">
@@ -323,19 +347,20 @@ function TradeModal({
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [state, action, pending] = useActionState(recordTrade, {});
+  const [purchasePending, setPurchasePending] = useState(false);
   const router = useRouter();
   const [selected, setSelected] = useState(
     lot?.instrument_id || (type === "BUY" ? "new" : instruments[0]?.id || ""),
   );
-  const [symbol, setSymbol] = useState("");
   const [quantity, setQuantity] = useState("");
   const [price, setPrice] = useState("");
   const [tradeDate, setTradeDate] = useState("");
   const complete =
-    (selected === "new" ? symbol.trim() !== "" : selected !== "") &&
+    selected !== "" &&
     /^[0-9]+$/.test(quantity) &&
     price.trim() !== "" &&
     tradeDate !== "";
+
   useEffect(() => {
     dialog.current?.showModal();
   }, []);
@@ -345,123 +370,120 @@ function TradeModal({
       close();
     }
   }, [state.success, router, close]);
+
   return (
-    <dialog ref={dialog} className="trade-dialog" onClose={close}>
+    <dialog
+      ref={dialog}
+      className={`trade-dialog ${type === "BUY" ? "purchase-dialog" : ""}`}
+      onClose={close}
+      onCancel={(event) => {
+        if (purchasePending) event.preventDefault();
+      }}
+    >
       <div className="trade-dialog-header">
         <div>
           <h2>{type === "BUY" ? "Record a purchase" : "Record a sale"}</h2>
-          <p>Enter the details from your investment records.</p>
         </div>
-        <button type="button" aria-label="Close" onClick={close}>
+        <button
+          type="button"
+          aria-label="Close"
+          onClick={close}
+          disabled={purchasePending}
+        >
           <X size={19} />
         </button>
       </div>
-      <form action={action} className="trade-form">
-        <input type="hidden" name="type" value={type} />
-        {lot && <input type="hidden" name="lot" value={lot.id} />}
-        <label>
-          Stock
-          <span className="select-shell">
-            <select
-              name="instrument"
-              value={selected === "new" ? "" : selected}
-              onChange={(e) => setSelected(e.target.value || "new")}
-              required={type === "SELL"}
-              disabled={!!lot}
-            >
-              {type === "BUY" && <option value="">Add a new NSE ticker</option>}
-              {instruments.map((i) => (
-                <option key={i.id} value={i.id}>
-                  {i.trading_symbol}
-                </option>
-              ))}
-            </select>
-            <ChevronDown size={18} aria-hidden="true" />
-          </span>
-        </label>
-        {lot && (
-          <input type="hidden" name="instrument" value={lot.instrument_id} />
-        )}{" "}
-        {selected === "new" && (
+      {type === "BUY" ? (
+        <PurchaseEntry close={close} onPendingChange={setPurchasePending} />
+      ) : (
+        <form action={action} className="trade-form">
+          <input type="hidden" name="type" value={type} />
+          {lot && <input type="hidden" name="lot" value={lot.id} />}
           <label>
-            NSE ticker symbol
-            <input
-              name="symbol"
-              placeholder="e.g. HINDALCO"
-              maxLength={30}
-              required
-              autoComplete="off"
-              value={symbol}
-              onChange={(event) => setSymbol(event.target.value)}
-            />
-            <small>Use the NSE trading symbol from your contract note.</small>
+            Stock
+            <span className="select-shell">
+              <select
+                name="instrument"
+                value={selected === "new" ? "" : selected}
+                onChange={(e) => setSelected(e.target.value || "new")}
+                required={type === "SELL"}
+                disabled={!!lot}
+              >
+                {instruments.map((i) => (
+                  <option key={i.id} value={i.id}>
+                    {i.trading_symbol}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown size={18} aria-hidden="true" />
+            </span>
           </label>
-        )}
-        <label>
-          Quantity
-          <input
-            type="text"
-            name="quantity"
-            inputMode="numeric"
-            pattern="[0-9]+"
-            required
-            placeholder="0"
-            value={quantity}
-            onChange={(event) => setQuantity(event.target.value)}
-          />
-          <small>
-            {lot
-              ? `Up to ${n(lot.quantity).minus(lot.sold).toString()} units in this purchase; oldest purchases are sold first.`
-              : "Enter the whole number of shares or units bought or sold."}
-          </small>
-        </label>
-        <label>
-          {type === "BUY" ? "Purchase price per share" : "Sale price per share"}
-          <input
-            type="text"
-            name="price"
-            inputMode="decimal"
-            required
-            placeholder="0.00"
-            value={price}
-            onChange={(event) => setPrice(event.target.value)}
-          />
-        </label>
-        <label>
-          {type === "BUY" ? "Purchase date" : "Sale date"}
-          <input
-            type="date"
-            name="date"
-            required
-            value={tradeDate}
-            onChange={(event) => setTradeDate(event.target.value)}
-          />
-        </label>
-        {state.error && (
-          <p className="trade-error" role="alert">
-            {state.error}
+          {lot && (
+            <input type="hidden" name="instrument" value={lot.instrument_id} />
+          )}{" "}
+          <label>
+            Quantity
+            <input
+              type="text"
+              name="quantity"
+              inputMode="numeric"
+              pattern="[0-9]+"
+              required
+              placeholder="0"
+              value={quantity}
+              onChange={(event) => setQuantity(event.target.value)}
+            />
+            <small>
+              {lot
+                ? `Up to ${n(lot.quantity).minus(lot.sold).toString()} units in this purchase; oldest purchases are sold first.`
+                : "Enter the whole number of shares or units bought or sold."}
+            </small>
+          </label>
+          <label>
+            Sale price per share
+            <input
+              type="text"
+              name="price"
+              inputMode="decimal"
+              required
+              placeholder="0.00"
+              value={price}
+              onChange={(event) => setPrice(event.target.value)}
+            />
+          </label>
+          <label>
+            Sale date
+            <input
+              type="date"
+              name="date"
+              required
+              value={tradeDate}
+              onChange={(event) => setTradeDate(event.target.value)}
+            />
+          </label>
+          {state.error && (
+            <p className="trade-error" role="alert">
+              {state.error}
+            </p>
+          )}
+          <p className="trade-note">
+            Brokerage, charges and taxes are not captured yet. Do not use these
+            figures for tax filing.
           </p>
-        )}
-        <p className="trade-note">
-          Brokerage, charges and taxes are not captured yet. Do not use these
-          figures for tax filing.
-        </p>
-        <div className="trade-buttons">
-          <button type="button" onClick={close}>
-            Cancel
-          </button>
-          <button type="submit" disabled={pending || !complete}>
-            {pending
-              ? "Saving…"
-              : type === "BUY"
-                ? "Save purchase"
-                : "Save sale"}
-          </button>
-        </div>
-      </form>
+          <div className="trade-buttons">
+            <button type="button" onClick={close}>
+              Cancel
+            </button>
+            <button type="submit" disabled={pending || !complete}>
+              {pending ? "Saving…" : "Save sale"}
+            </button>
+          </div>
+        </form>
+      )}
     </dialog>
   );
 }
+
 export function LiveViews({
   data,
   view,
@@ -490,10 +512,13 @@ export function LiveViews({
   const [quoteStatus, setQuoteStatus] = useState<MarketStatus>(marketStatus);
   const quoteRequest = useRef<Promise<MarketStatus> | null>(null);
   const pageKey = `${data.page}:${initialSort}`;
+
   useEffect(() => {
     if (view !== "dashboard" && view !== "portfolio") return;
+
     let cancelled = false;
     const request = quoteRequest.current ?? refreshQuotesWithRetry();
+
     quoteRequest.current = request;
     void request
       .then((status) => {
@@ -507,10 +532,12 @@ export function LiveViews({
       .finally(() => {
         if (quoteRequest.current === request) quoteRequest.current = null;
       });
+
     return () => {
       cancelled = true;
     };
   }, [view, router, detailId, pageKey]);
+
   const [marketTicks, setMarketTicks] = useState<Record<string, MarketTick>>(
     {},
   );
@@ -518,12 +545,14 @@ export function LiveViews({
   const activeAsset = liveMarket ? "Live Market" : asset;
   const sort = initialSort;
   const page = data.page;
+
   function navigateList(nextPage: number, nextSort: string) {
     const params = new URLSearchParams({
       view,
       page: String(nextPage),
       sort: nextSort,
     });
+
     router.push(`/dashboard?${params.toString()}`);
   }
 
@@ -533,7 +562,9 @@ export function LiveViews({
         const i = data.instruments.find(
           (instrument) => instrument.id === summary.id,
         );
+
         if (!i) return [];
+
         const quantity = n(summary.quantity);
         const cost = n(summary.cost);
         const value = currentHoldingValue(
@@ -542,6 +573,7 @@ export function LiveViews({
           i.market_date,
           summary.latest,
         );
+
         return [
           {
             i,
@@ -554,6 +586,7 @@ export function LiveViews({
           },
         ];
       });
+
     return data.instruments
       .map((i) => {
         const lots = data.transactions
@@ -575,6 +608,7 @@ export function LiveViews({
           i.market_date,
           latestTrade,
         );
+
         return {
           i,
           lots,
@@ -607,6 +641,7 @@ export function LiveViews({
     ? holdings.find((h) => h.i.id === detailId)
     : undefined;
   const items = view === "transactions" ? orderedTransactions : sortedHoldings;
+
   if (view === "portfolio" && detailId)
     return details ? (
       <InstrumentDetails
@@ -625,6 +660,7 @@ export function LiveViews({
         <p>This investment is not available in your portfolio.</p>
       </div>
     );
+
   const currentPage = page;
   const visibleHoldings = sortedHoldings;
   const quoteDates = [
@@ -635,6 +671,7 @@ export function LiveViews({
     ),
   ];
   const sharedQuoteDate = quoteDates.length === 1 ? quoteDates[0] : null;
+
   return (
     <div className="sample-page">
       <header className="sample-heading">
@@ -930,6 +967,7 @@ export function LiveViews({
                     const i = data.instruments.find(
                       (i) => i.id === t.instrument_id,
                     );
+
                     return (
                       <tr key={t.id}>
                         <td>{date(t.transaction_date)}</td>
@@ -995,6 +1033,7 @@ type Holding = {
   profit: Decimal | null;
   latest: string;
 };
+
 function LiveMarket({
   holdings,
   ticks,
@@ -1013,13 +1052,16 @@ function LiveMarket({
   );
   const activeHoldings = holdings.map((h) => {
     const tick = h.i.fyers_symbol ? ticks[h.i.fyers_symbol] : undefined;
+
     if (
       !tick ||
       tick.marketDate < h.latest ||
       (h.i.market_date && tick.marketDate < h.i.market_date)
     )
       return h;
+
     const value = h.quantity.mul(tick.price);
+
     return {
       ...h,
       i: { ...h.i, price: tick.price, market_date: tick.marketDate },
@@ -1029,6 +1071,7 @@ function LiveMarket({
   });
   const daily = activeHoldings.map((h) => {
     const tick = h.i.fyers_symbol ? ticks[h.i.fyers_symbol] : undefined;
+
     return tick &&
       tick.marketDate >= h.latest &&
       tick.marketDate === h.i.market_date
@@ -1089,6 +1132,7 @@ function LiveMarket({
         returnsById.get(b.i.id) ?? null,
         sort.ascending,
       );
+
     return compareNullableDecimal(a.value, b.value, sort.ascending);
   });
   const headers = [
@@ -1097,6 +1141,7 @@ function LiveMarket({
     ["returns", "Returns (%)"],
     ["current", "Current (Invested)"],
   ] as const;
+
   return (
     <>
       {holdings.length > 0 &&
@@ -1259,6 +1304,7 @@ function LiveMarket({
                               tick.previousClose,
                             )
                           : null;
+
                       return (
                         <small
                           className={
@@ -1305,8 +1351,10 @@ function LiveMarket({
     </>
   );
 }
+
 function MarketNotice({ status }: { status: MarketStatus }) {
   if (status === "current" || status === "cached") return null;
+
   return (
     <div className="market-notice" role="status">
       {status === "reconnect" ? (
@@ -1322,6 +1370,7 @@ function MarketNotice({ status }: { status: MarketStatus }) {
     </div>
   );
 }
+
 function DashboardOverview({
   holdings,
   transactions,
@@ -1349,6 +1398,7 @@ function DashboardOverview({
     missing === 0 && holdings.length ? totalValue.minus(totalCost) : null;
   const top = [...priced].sort((a, b) => b.value!.cmp(a.value!)).slice(0, 5);
   const maximum = top[0]?.value ?? n("0");
+
   return (
     <>
       <section className="overview-metrics" aria-label="Portfolio summary">
@@ -1445,6 +1495,7 @@ function DashboardOverview({
                 const instrument = instruments.find(
                   (i) => i.id === t.instrument_id,
                 );
+
                 return (
                   <div className="recent-item" key={t.id}>
                     <div>
@@ -1528,6 +1579,7 @@ function DashboardOverview({
     </>
   );
 }
+
 const historyPeriods = ["7D", "30D", "90D", "6M", "365D"] as const;
 const periodLabels: Record<string, string> = {
   "7D": "7 days",
@@ -1536,6 +1588,7 @@ const periodLabels: Record<string, string> = {
   "6M": "6 months",
   "365D": "365 days",
 };
+
 function InstrumentDetails({
   holding,
   data,
@@ -1569,20 +1622,28 @@ function InstrumentDetails({
   const [historyState, setHistoryState] = useState<
     "loading" | "done" | "partial" | "reconnect"
   >(() => (pendingPeriods.length ? "loading" : "done"));
+
   useEffect(() => {
     if (!pendingPeriods.length) return;
+
     let cancelled = false;
+
     const wait = () =>
       new Promise<void>((resolve) => setTimeout(resolve, 2200));
+
     async function load() {
       setHistoryState("loading");
+
       let partial = false;
+
       for (let index = 0; index < pendingPeriods.length; index++) {
         if (cancelled) return;
+
         let result = await refreshHistoricalPrice(
           holding.i.id,
           pendingPeriods[index],
         );
+
         for (
           let retry = 0;
           result === "throttled" && retry < 3 && !cancelled;
@@ -1595,31 +1656,38 @@ function InstrumentDetails({
               pendingPeriods[index],
             );
         }
+
         if (cancelled) return;
         if (result === "reconnect") {
           setHistoryState("reconnect");
           router.refresh();
+
           return;
         }
+
         if (result === "updated" && index < pendingPeriods.length - 1)
           await wait();
         if (result === "unavailable" || result === "throttled") partial = true;
       }
+
       if (!cancelled) {
         setHistoryState(partial ? "partial" : "done");
         router.refresh();
       }
     }
+
     void load().catch(() => {
       if (!cancelled) {
         setHistoryState("partial");
         router.refresh();
       }
     });
+
     return () => {
       cancelled = true;
     };
   }, [holding.i.id, pendingPeriods, router]);
+
   const trades = useMemo(
     () => data.transactions.filter((t) => t.instrument_id === holding.i.id),
     [data.transactions, holding.i.id],
@@ -1632,6 +1700,7 @@ function InstrumentDetails({
       !trades.every((t) => t.transaction_date <= priceDate)
     )
       return null;
+
     const flows = trades.map((t) => ({
       date: t.transaction_date,
       amount: (t.type === "BUY"
@@ -1639,6 +1708,7 @@ function InstrumentDetails({
         : n(t.quantity).mul(t.unit_price).minus(t.fees).minus(t.taxes)
       ).toString(),
     }));
+
     return xirr([
       ...flows,
       { date: priceDate, amount: holding.value.toString() },
@@ -1646,6 +1716,7 @@ function InstrumentDetails({
   }, [trades, priceDate, holding.value]);
   const chartPoints = [...baselines].reverse().map(({ period, data: b }) => {
     const quantity = b?.market_date ? quantityAt(trades, b.market_date) : null;
+
     return {
       label: periodLabels[period],
       date: b?.market_date ?? null,
@@ -1654,6 +1725,7 @@ function InstrumentDetails({
     };
   });
   const latestQuantity = priceDate ? quantityAt(trades, priceDate) : null;
+
   chartPoints.push({
     label: "Latest",
     date: priceDate,
@@ -1663,10 +1735,12 @@ function InstrumentDetails({
         ? latestQuantity.mul(holding.i.price)
         : null,
   });
+
   const chartMax = chartPoints.reduce(
     (max, point) => (point.value ? Decimal.max(max, point.value) : max),
     n("0"),
   );
+
   return (
     <div className="sample-page detail-page">
       <Link href="/dashboard?view=portfolio" className="detail-back">
@@ -1868,6 +1942,7 @@ function InstrumentDetails({
                           priceDate,
                         )
                       : null;
+
                   return (
                     <tr key={t.id}>
                       <td>{date(t.transaction_date)}</td>

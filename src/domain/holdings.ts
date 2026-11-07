@@ -9,6 +9,7 @@ export type LotInput = {
   sold: string;
   allocated_cost: string;
 };
+
 export function remainingLot(lot: LotInput) {
   const quantity = new Decimal(lot.quantity);
   const remaining = quantity.minus(lot.sold);
@@ -17,6 +18,7 @@ export function remainingLot(lot: LotInput) {
     .plus(lot.fees)
     .plus(lot.taxes)
     .minus(lot.allocated_cost);
+
   return { remaining, cost };
 }
 
@@ -28,11 +30,16 @@ export function purchasePerformance(input: {
   purchaseDate: string;
 }) {
   const { quantity, purchaseCost, price, priceDate, purchaseDate } = input;
+
   if (!price || !priceDate || purchaseDate >= priceDate) return null;
+
   const shares = new Decimal(quantity);
   const cost = new Decimal(purchaseCost);
+
   if (shares.lte(0) || cost.lte(0)) return null;
+
   const amount = shares.mul(price).minus(cost);
+
   return { amount, percent: amount.div(cost).mul(100) };
 }
 
@@ -43,5 +50,6 @@ export function currentHoldingValue(
   latestTrade: string,
 ) {
   if (price === null || !priceDate || priceDate < latestTrade) return null;
+
   return new Decimal(quantity).mul(price);
 }

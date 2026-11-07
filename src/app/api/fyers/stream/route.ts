@@ -12,6 +12,7 @@ import {
 import { parseMarketTick } from "../../../../domain/live-market";
 
 export const runtime = "nodejs";
+
 export const dynamic = "force-dynamic";
 
 // Each worker has its own SDK module instance, so a renewed FYERS session can
@@ -31,11 +32,13 @@ try {
 `;
 
 type Subscriber = (event: object) => void;
+
 type Stream = {
   worker: Worker;
   key: string;
   listeners: Set<Subscriber>;
 };
+
 const globalStreams = globalThis as typeof globalThis & {
   fyersLiveStream?: Stream;
 };
@@ -45,18 +48,22 @@ export async function GET(request: Request) {
   const user = await owner();
   const token = user ? await getToken(user) : null;
   const app = process.env.FYERS_APP_ID;
+
   if (!user || !token || !app) {
     return new Response("FYERS reconnect required", { status: 401 });
   }
+
   const sql = database();
   const rows = await listStreamingSymbols(sql, user);
   const symbols = rows.map((row) => String(row.fyers_symbol));
+
   if (!symbols.length || symbols.length > 100) {
     return new Response(
       "No eligible symbols or Standard subscription limit exceeded",
       { status: 409 },
     );
   }
+
   const symbolSet = new Set(symbols);
   const { createHash } = await import("node:crypto");
   const key = createHash("sha256")
@@ -65,9 +72,11 @@ export async function GET(request: Request) {
     .update(JSON.stringify(symbols))
     .digest("hex");
   let shared = globalStreams.fyersLiveStream;
+
   if (shared && shared.key !== key) {
     return new Response("Another market stream is active", { status: 409 });
   }
+
   if (!shared) {
     const worker = new Worker(workerSource, {
       eval: true,
@@ -80,6 +89,7 @@ export async function GET(request: Request) {
       },
     });
     const listeners = new Set<Subscriber>();
+
     shared = { worker, key, listeners };
     globalStreams.fyersLiveStream = shared;
     worker.on("message", (event: { status?: string; message?: unknown }) => {
@@ -89,6 +99,7 @@ export async function GET(request: Request) {
         : event.status
           ? { status: event.status }
           : null;
+
       if (value) for (const listener of listeners) listener(value);
     });
     worker.on("error", () => {
@@ -100,6 +111,7 @@ export async function GET(request: Request) {
         delete globalStreams.fyersLiveStream;
     });
   }
+
   const current = shared;
   const encoder = new TextEncoder();
   let listener: Subscriber;
@@ -108,6 +120,7 @@ export async function GET(request: Request) {
   const body = new ReadableStream({
     start(controller) {
       let closed = false;
+
       const stop = () => {
         if (closed) return;
         closed = true;
@@ -119,10 +132,12 @@ export async function GET(request: Request) {
           if (globalStreams.fyersLiveStream === current)
             delete globalStreams.fyersLiveStream;
         }
+
         try {
           controller.close();
         } catch {}
       };
+
       listener = (event) => {
         try {
           controller.enqueue(
@@ -132,6 +147,7 @@ export async function GET(request: Request) {
           stop();
         }
       };
+
       current.listeners.add(listener);
       listener({ status: "connecting" });
       heartbeat = setInterval(() => listener({ status: "heartbeat" }), 15000);
@@ -145,6 +161,7 @@ export async function GET(request: Request) {
           streamRotationDelay(startedAt, Date.now()),
         );
       }
+
       request.signal.addEventListener("abort", stop, { once: true });
     },
     cancel() {
@@ -158,6 +175,7 @@ export async function GET(request: Request) {
       }
     },
   });
+
   return new Response(body, {
     headers: {
       "Content-Type": "text/event-stream",

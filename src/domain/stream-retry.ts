@@ -10,6 +10,7 @@ export function streamEventStatus(event: { status?: string; tick?: unknown }) {
   if (event.status === "rotate") return "rotate" as const;
   if (event.status === "error" || event.status === "closed")
     return "error" as const;
+
   return null;
 }
 

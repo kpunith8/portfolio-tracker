@@ -4,6 +4,7 @@ type CachedBaseline = {
   as_of_date: string;
   status: string;
 };
+
 export function pendingHistoricalPeriods<P extends string>(
   periods: readonly P[],
   entries: readonly CachedBaseline[],

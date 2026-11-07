@@ -2500,3 +2500,199 @@ td:nth-child(n + 3) {
     margin: 0 18px;
   }
 }
+
+.purchase-dialog {
+  width: min(680px, calc(100% - 32px));
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+}
+.purchase-tabs {
+  display: flex;
+  gap: 22px;
+  border-bottom: 1px solid #dce7df;
+  margin-top: 8px;
+}
+.purchase-tabs button {
+  border: 0;
+  border-bottom: 2px solid transparent;
+  padding: 10px 2px;
+  background: transparent;
+  color: #61776a;
+  font: inherit;
+  cursor: pointer;
+}
+.purchase-tabs button[aria-selected="true"] {
+  color: #286a49;
+  border-bottom-color: #286a49;
+  font-weight: 700;
+}
+.purchase-dialog .trade-dialog-header h2 {
+  margin-bottom: 0;
+}
+.purchase-entry-fieldset > .trade-form {
+  margin-top: 10px;
+}
+.purchase-entry-fieldset > .trade-form > .trade-note {
+  margin: 0;
+}
+.purchase-table-scroll {
+  overflow: auto;
+  max-height: 540px;
+}
+.purchase-table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 590px;
+  table-layout: fixed;
+  font-size: 12px;
+}
+.purchase-table th,
+.purchase-table td {
+  text-align: left;
+  padding: 6px;
+  border-bottom: 1px solid #e4ece6;
+  vertical-align: top;
+}
+.purchase-table th {
+  position: sticky;
+  top: 0;
+  background: #fafcf9;
+  color: #344c3d;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 10px 6px;
+  z-index: 1;
+}
+.purchase-table th:first-child {
+  width: 130px;
+}
+.purchase-table th:nth-child(2) {
+  width: 65px;
+}
+.purchase-table th:nth-child(3) {
+  width: 70px;
+}
+.purchase-table th:nth-child(4) {
+  width: 85px;
+}
+.purchase-table th:nth-child(5) {
+  width: 135px;
+}
+.purchase-table th:last-child {
+  width: 44px;
+}
+.trade-form .purchase-table input {
+  box-sizing: border-box;
+  min-height: 38px;
+  padding: 7px 8px;
+  font-size: 14px;
+}
+.trade-form .purchase-table input[aria-invalid="true"] {
+  border-color: #a23d35;
+  background: #fff6f5;
+}
+.trade-form .purchase-table td:first-child input {
+  max-width: 150px;
+}
+.trade-form .purchase-table input[type="date"] {
+  max-width: 135px;
+}
+.purchase-table td:nth-child(2),
+.purchase-table td:last-child {
+  vertical-align: middle;
+}
+.purchase-table td:last-child {
+  text-align: center;
+}
+.purchase-table td:last-child > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #a23d35;
+  cursor: pointer;
+}
+.purchase-table .trade-error {
+  display: block;
+  margin-top: 4px;
+}
+.purchase-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: end;
+  gap: 10px;
+  color: #61776a;
+  font-size: 12px;
+}
+.purchase-pagination button {
+  border: 1px solid #cad8cd;
+  border-radius: 7px;
+  background: white;
+  padding: 7px 10px;
+  cursor: pointer;
+}
+.symbol-search {
+  position: relative;
+  min-width: 0;
+}
+.symbol-results {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 4;
+  max-height: 200px;
+  overflow: auto;
+  background: white;
+  border: 1px solid #cad8cd;
+  border-radius: 7px;
+  box-shadow: 0 6px 18px #17281e22;
+}
+.symbol-results button {
+  display: grid;
+  width: 100%;
+  gap: 2px;
+  text-align: left;
+  border: 0;
+  padding: 8px 9px;
+  background: white;
+  color: #253e31;
+  font: inherit;
+  cursor: pointer;
+}
+.symbol-results button strong {
+  font-size: 13px;
+  line-height: 1.3;
+}
+.symbol-results button span {
+  padding: 0;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.3;
+}
+.symbol-results button:hover,
+.symbol-results button:focus-visible {
+  background: #edf5ef;
+}
+.symbol-results > span {
+  display: block;
+  padding: 7px;
+  font-size: 12px;
+  color: #61776a;
+}
+.purchase-entry-fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+.purchase-dialog .trade-form > a {
+  color: #286a49;
+  font-size: 13px;
+  font-weight: 700;
+}

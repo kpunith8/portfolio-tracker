@@ -12,12 +12,14 @@ import {
 } from "recharts";
 
 type Point = { date: string; value: number; invested: number };
+
 const ranges = [
   { label: "3M", count: 4 },
   { label: "6M", count: 7 },
   { label: "1Y", count: 12 },
   { label: "All", count: Infinity },
 ];
+
 const money = (value: number) =>
   `₹${new Intl.NumberFormat("en-IN").format(value)}`;
 
@@ -26,6 +28,7 @@ export function PerformanceChart({ history }: { history: Point[] }) {
   const points = history.slice(
     -(ranges.find((item) => item.label === range)?.count ?? history.length),
   );
+
   return (
     <>
       <div className="chart-toolbar">

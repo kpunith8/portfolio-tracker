@@ -7,9 +7,11 @@ registerHooks({
   resolve(specifier, context, nextResolve) {
     if (specifier === "server-only")
       return { url: "data:text/javascript,", shortCircuit: true };
+
     return nextResolve(specifier, context);
   },
 });
+
 const { saveDailyHistory, listSavedHistoryDates, releaseHistoryLease } =
   await import("../../src/server/market-data/daily-history-queries.ts");
 const { saveFetchedBaseline } =
@@ -30,6 +32,7 @@ test("daily history writes remain lease-protected, user-scoped and atomic", () =
     "[]",
     true,
   );
+
   assert.match(query.text, /WITH valid AS/);
   assert.match(query.text, /l\.lease_id=\?::uuid AND l\.expires_at>now\(\)/);
   assert.match(query.text, /p\.kinde_subject=\?/);
@@ -49,6 +52,7 @@ test("history reads and cleanup use the given owner and lease", () => {
     "2026-01-01",
     "2026-01-31",
   );
+
   assert.deepEqual(query.values, [
     "owner",
     "ticker",
@@ -71,6 +75,7 @@ test("baseline and trade operations bind the supplied user and input values", ()
     "ticker",
     "owner",
   );
+
   assert.match(baseline.text, /p\.kinde_subject=\?/);
   assert.deepEqual(baseline.values.slice(0, 8), [
     "7D",
@@ -82,6 +87,7 @@ test("baseline and trade operations bind the supplied user and input values", ()
     "ticker",
     "owner",
   ]);
+
   const trade = recordTradeEntry(
     capture,
     "owner",
@@ -93,6 +99,7 @@ test("baseline and trade operations bind the supplied user and input values", ()
     "2026-11-05",
     null,
   );
+
   assert.deepEqual(trade.values, [
     "owner",
     "BUY",

@@ -15,6 +15,7 @@ if (!process.env.DATABASE_URL) {
       new URL("../db/migrations/008_delete_purchase.sql", import.meta.url),
       "utf8",
     );
+
     await sql.query(migration);
     console.log("Migration 008 is applied.");
   } catch {

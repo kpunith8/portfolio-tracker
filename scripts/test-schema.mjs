@@ -13,6 +13,7 @@ if (!process.env.DATABASE_URL) {
       new URL("../tests/db/portfolio_schema.sql", import.meta.url),
       "utf8",
     );
+
     await sql.query(test);
     console.log("Portfolio schema constraints passed; test fixtures removed.");
   } catch {

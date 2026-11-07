@@ -3,6 +3,7 @@ import type { database } from "../db/database";
 import { PORTFOLIO_PAGE_SIZE } from "../../domain/pagination";
 
 type Sql = ReturnType<typeof database>;
+
 type Sort = "date" | "value";
 
 // Callers must supply the authenticated subject; every query scopes its rows to it.

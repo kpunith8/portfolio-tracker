@@ -32,7 +32,7 @@ Users maintain their own purchase and sale records and may use a downloadable CS
 
 ## Evidence on Hand
 
-The existing landing page is in `src/app/`; its portfolio reads stored transactions; FYERS prices and selected historical closes are shown with dates when available. Product requirements and technical decisions are recorded in `tasks/plan.md` and `docs/technical-specification.md`. No customer testimonials, real portfolio figures or usage claims have been supplied for publication.
+The existing landing page is in `src/app/`; its portfolio reads stored transactions; FYERS prices and selected historical closes are shown with dates when available. Product requirements and technical decisions are recorded in `docs/plan.md` and `docs/technical-specification.md`. No customer testimonials, real portfolio figures or usage claims have been supplied for publication.
 
 ## Product Principles
 

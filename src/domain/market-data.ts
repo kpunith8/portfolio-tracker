@@ -1,6 +1,7 @@
 import { isLosslessNumber } from "lossless-json";
 import { marketDate } from "./market-date-utils.ts";
 import { validMarketPrice } from "./price-utils.ts";
+
 export { marketDate } from "./market-date-utils.ts";
 
 export const periods = [
@@ -12,33 +13,44 @@ export const periods = [
   "6M",
   "365D",
 ] as const;
+
 export type Period = (typeof periods)[number];
+
 export function numberText(value: unknown) {
   if (isLosslessNumber(value)) return value.toString();
   if (typeof value === "string" && /^-?\d+(?:\.\d+)?$/.test(value))
     return value;
+
   return null;
 }
+
 /** Classify provider response codes after lossless number parsing. */
 export function fyersErrorStatus(code: unknown): "reconnect" | "unavailable" {
   return ["-8", "-15", "-16", "-17"].includes(numberText(code) || "")
     ? "reconnect"
     : "unavailable";
 }
+
 export function targetDate(asOf: string, period: Period) {
   const [year, month, day] = asOf.split("-").map(Number);
   const date = new Date(Date.UTC(year, month - 1, day));
+
   if (period === "6M") {
     const first = new Date(Date.UTC(year, month - 7, 1));
     const last = new Date(
       Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + 1, 0),
     ).getUTCDate();
+
     first.setUTCDate(Math.min(day, last));
+
     return first.toISOString().slice(0, 10);
   }
+
   date.setUTCDate(date.getUTCDate() - Number(period.slice(0, -1)));
+
   return date.toISOString().slice(0, 10);
 }
+
 export function priorClose(
   candles: unknown[][],
   target: string,
@@ -47,18 +59,28 @@ export function priorClose(
   const candidates = candles
     .flatMap((c) => {
       if (!Array.isArray(c) || c.length < 5) return [];
+
       const time = numberText(c[0]);
       const price = numberText(c[4]);
+
       if (!time || !/^\d{1,10}$/.test(time) || !price) return [];
+
       const epoch = Number(time);
+
       if (epoch < 946684800 || epoch > nowSeconds + 86400) return [];
+
       const day = marketDate(epoch);
+
       if (day > target) return [];
+
       const value = validMarketPrice(price);
+
       if (!value) return [];
+
       return [{ day, price: value.toFixed() }];
     })
     .sort((a, b) => b.day.localeCompare(a.day));
+
   return candidates[0] ?? null;
 }
 
@@ -67,6 +89,7 @@ export type ProviderQuote = {
   s?: string;
   v?: { lp?: unknown; tt?: unknown };
 };
+
 export function validQuotes(
   quotes: ProviderQuote[],
   symbols: Map<string, string>,
@@ -76,10 +99,12 @@ export function validQuotes(
     string,
     { id: string; price: string; market_date: string; observed_at: string }
   >();
+
   for (const quote of quotes) {
     const id = symbols.get(quote.n || "");
     const price = numberText(quote.v?.lp);
     const timestamp = numberText(quote.v?.tt);
+
     if (
       !id ||
       quote.s !== "ok" ||
@@ -88,9 +113,13 @@ export function validQuotes(
       !/^\d{1,10}$/.test(timestamp)
     )
       continue;
+
     const epoch = Number(timestamp);
+
     if (epoch < 946684800 || epoch > nowSeconds + 86400) continue;
+
     const value = validMarketPrice(price);
+
     if (!value) continue;
     results.set(id, {
       id,
@@ -99,6 +128,7 @@ export function validQuotes(
       observed_at: new Date(epoch * 1000).toISOString(),
     });
   }
+
   return [...results.values()];
 }
 
@@ -108,5 +138,6 @@ export function quoteBatchStatus(
   stale: number,
 ) {
   if (received !== batch) return "unavailable" as const;
+
   return batch < stale ? ("more" as const) : ("current" as const);
 }

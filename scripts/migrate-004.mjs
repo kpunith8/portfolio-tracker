@@ -15,6 +15,7 @@ if (!process.env.DATABASE_URL) {
       new URL("../db/migrations/004_ledger.sql", import.meta.url),
       "utf8",
     );
+
     await sql.query(migration);
     console.log("Migration 004 is applied.");
   } catch {

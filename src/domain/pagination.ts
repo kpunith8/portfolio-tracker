@@ -1,4 +1,5 @@
 export const PORTFOLIO_PAGE_SIZE = 20;
+
 const MAX_PAGE = 100000;
 
 export function portfolioPage(requested: number) {
@@ -6,6 +7,7 @@ export function portfolioPage(requested: number) {
     Number.isSafeInteger(requested) && requested > 0
       ? Math.min(requested, MAX_PAGE)
       : 1;
+
   return { page, offset: (page - 1) * PORTFOLIO_PAGE_SIZE };
 }
 
