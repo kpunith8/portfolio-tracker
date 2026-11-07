@@ -50,9 +50,6 @@ export async function recordTrade(
 ): Promise<Result> {
   const type = String(form.get("type") || "");
   const instrument = String(form.get("instrument") || "");
-  const symbol = String(form.get("symbol") || "")
-    .trim()
-    .toUpperCase();
   const quantity = String(form.get("quantity") || "").trim();
   const price = String(form.get("price") || "").trim();
   const date = String(form.get("date") || "");
@@ -61,10 +58,10 @@ export async function recordTrade(
   if (!/^\d{1,18}$/.test(quantity) || /^0+$/.test(quantity))
     return { error: "Enter a positive whole-number quantity." };
   if (
-    !["BUY", "SELL"].includes(type) ||
+    type !== "SELL" ||
+    !instrument ||
     (instrument && !isUuid(instrument)) ||
     (lot && !isUuid(lot)) ||
-    (!instrument && (type !== "BUY" || !/^[A-Z0-9&-]{1,30}$/.test(symbol))) ||
     !/^\d{1,16}(\.\d{1,8})?$/.test(price) ||
     !/^\d{4}-\d{2}-\d{2}$/.test(date)
   )
@@ -78,7 +75,7 @@ export async function recordTrade(
       user,
       type,
       instrument || null,
-      symbol || null,
+      null,
       quantity,
       price,
       date,

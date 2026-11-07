@@ -30,7 +30,10 @@
     "test:server": "node --test --experimental-test-coverage --test-coverage-include=\"src/**\" tests/server/*.test.mjs",
     "test": "node --test --experimental-test-coverage --test-coverage-include=\"src/**\" tests/unit/*.test.mjs tests/server/*.test.mjs",
     "test:component": "playwright test -c playwright-ct.config.ts",
-    "test:integration": "playwright test -c playwright.config.ts"
+    "test:integration": "playwright test -c playwright.config.ts",
+    "db:migrate:011": "node scripts/migrate-011.mjs",
+    "db:import-fyers-symbols": "node scripts/import-fyers-symbols.mjs",
+    "db:migrate:012": "node scripts/migrate-012.mjs"
   },
   "keywords": [],
   "author": "",

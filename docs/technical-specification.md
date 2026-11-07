@@ -37,7 +37,8 @@ Vercel production requests rotate before the function deadline and the client us
 
 ## Evolving the application
 
-- General CSV import, edits/voids and sale replay, manual-valuation asset workflows, sold-lot reporting and tax reporting remain planned; consult the product plan before implementing them.
+- Purchase CSV import uses the downloaded template, resolves symbols against the shared FYERS catalog, and commits each batch atomically with an owner-scoped retry key and CSV provenance. A changed payload requires a new key; uncertain saves should be retried without editing. The catalog is refreshed manually and can be stale. The import currently accepts up to 1,000 rows, whole-share quantities, and no charges.
+- Edits/voids and sale replay, manual-valuation asset workflows, sold-lot reporting and tax reporting remain planned; consult the product plan before implementing them.
 - Import should validate a preview without writes, prevent duplicate submissions, and commit atomically while preserving provenance and ownership. Escape formula-triggering cells on export.
 - Financial-year and tax rules must be versioned and verified against current primary sources. FIFO for tax may require a demat-specific pool; unsupported classifications, STT, grandfathering and loss adjustments require review. Raw reporting-period totals are not final ITR entries.
 - For manual assets, use user-supplied dated valuations and compatible cash flows; do not estimate interest or claim current values without evidence.

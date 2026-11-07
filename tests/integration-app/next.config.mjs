@@ -11,6 +11,10 @@ const config = {
       directory,
       "market-actions.js",
     );
+    config.resolve.alias["../../app/dashboard/purchase-actions$"] = path.join(
+      directory,
+      "purchase-actions.js",
+    );
     config.resolve.alias["../../app/dashboard/trade-actions$"] = path.join(
       directory,
       "trade-actions.js",

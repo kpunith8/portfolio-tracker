@@ -39,6 +39,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import { PurchaseEntry } from "./purchase-entry";
 import { deletePurchase, recordTrade } from "../../app/dashboard/trade-actions";
 
 Decimal.set({ precision: 64, rounding: Decimal.ROUND_HALF_UP });
@@ -346,16 +347,16 @@ function TradeModal({
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [state, action, pending] = useActionState(recordTrade, {});
+  const [purchasePending, setPurchasePending] = useState(false);
   const router = useRouter();
   const [selected, setSelected] = useState(
     lot?.instrument_id || (type === "BUY" ? "new" : instruments[0]?.id || ""),
   );
-  const [symbol, setSymbol] = useState("");
   const [quantity, setQuantity] = useState("");
   const [price, setPrice] = useState("");
   const [tradeDate, setTradeDate] = useState("");
   const complete =
-    (selected === "new" ? symbol.trim() !== "" : selected !== "") &&
+    selected !== "" &&
     /^[0-9]+$/.test(quantity) &&
     price.trim() !== "" &&
     tradeDate !== "";
@@ -371,119 +372,115 @@ function TradeModal({
   }, [state.success, router, close]);
 
   return (
-    <dialog ref={dialog} className="trade-dialog" onClose={close}>
+    <dialog
+      ref={dialog}
+      className={`trade-dialog ${type === "BUY" ? "purchase-dialog" : ""}`}
+      onClose={close}
+      onCancel={(event) => {
+        if (purchasePending) event.preventDefault();
+      }}
+    >
       <div className="trade-dialog-header">
         <div>
           <h2>{type === "BUY" ? "Record a purchase" : "Record a sale"}</h2>
           <p>Enter the details from your investment records.</p>
         </div>
-        <button type="button" aria-label="Close" onClick={close}>
+        <button
+          type="button"
+          aria-label="Close"
+          onClick={close}
+          disabled={purchasePending}
+        >
           <X size={19} />
         </button>
       </div>
-      <form action={action} className="trade-form">
-        <input type="hidden" name="type" value={type} />
-        {lot && <input type="hidden" name="lot" value={lot.id} />}
-        <label>
-          Stock
-          <span className="select-shell">
-            <select
-              name="instrument"
-              value={selected === "new" ? "" : selected}
-              onChange={(e) => setSelected(e.target.value || "new")}
-              required={type === "SELL"}
-              disabled={!!lot}
-            >
-              {type === "BUY" && <option value="">Add a new NSE ticker</option>}
-              {instruments.map((i) => (
-                <option key={i.id} value={i.id}>
-                  {i.trading_symbol}
-                </option>
-              ))}
-            </select>
-            <ChevronDown size={18} aria-hidden="true" />
-          </span>
-        </label>
-        {lot && (
-          <input type="hidden" name="instrument" value={lot.instrument_id} />
-        )}{" "}
-        {selected === "new" && (
+      {type === "BUY" ? (
+        <PurchaseEntry close={close} onPendingChange={setPurchasePending} />
+      ) : (
+        <form action={action} className="trade-form">
+          <input type="hidden" name="type" value={type} />
+          {lot && <input type="hidden" name="lot" value={lot.id} />}
           <label>
-            NSE ticker symbol
-            <input
-              name="symbol"
-              placeholder="e.g. HINDALCO"
-              maxLength={30}
-              required
-              autoComplete="off"
-              value={symbol}
-              onChange={(event) => setSymbol(event.target.value)}
-            />
-            <small>Use the NSE trading symbol from your contract note.</small>
+            Stock
+            <span className="select-shell">
+              <select
+                name="instrument"
+                value={selected === "new" ? "" : selected}
+                onChange={(e) => setSelected(e.target.value || "new")}
+                required={type === "SELL"}
+                disabled={!!lot}
+              >
+                {instruments.map((i) => (
+                  <option key={i.id} value={i.id}>
+                    {i.trading_symbol}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown size={18} aria-hidden="true" />
+            </span>
           </label>
-        )}
-        <label>
-          Quantity
-          <input
-            type="text"
-            name="quantity"
-            inputMode="numeric"
-            pattern="[0-9]+"
-            required
-            placeholder="0"
-            value={quantity}
-            onChange={(event) => setQuantity(event.target.value)}
-          />
-          <small>
-            {lot
-              ? `Up to ${n(lot.quantity).minus(lot.sold).toString()} units in this purchase; oldest purchases are sold first.`
-              : "Enter the whole number of shares or units bought or sold."}
-          </small>
-        </label>
-        <label>
-          {type === "BUY" ? "Purchase price per share" : "Sale price per share"}
-          <input
-            type="text"
-            name="price"
-            inputMode="decimal"
-            required
-            placeholder="0.00"
-            value={price}
-            onChange={(event) => setPrice(event.target.value)}
-          />
-        </label>
-        <label>
-          {type === "BUY" ? "Purchase date" : "Sale date"}
-          <input
-            type="date"
-            name="date"
-            required
-            value={tradeDate}
-            onChange={(event) => setTradeDate(event.target.value)}
-          />
-        </label>
-        {state.error && (
-          <p className="trade-error" role="alert">
-            {state.error}
+          {lot && (
+            <input type="hidden" name="instrument" value={lot.instrument_id} />
+          )}{" "}
+          <label>
+            Quantity
+            <input
+              type="text"
+              name="quantity"
+              inputMode="numeric"
+              pattern="[0-9]+"
+              required
+              placeholder="0"
+              value={quantity}
+              onChange={(event) => setQuantity(event.target.value)}
+            />
+            <small>
+              {lot
+                ? `Up to ${n(lot.quantity).minus(lot.sold).toString()} units in this purchase; oldest purchases are sold first.`
+                : "Enter the whole number of shares or units bought or sold."}
+            </small>
+          </label>
+          <label>
+            Sale price per share
+            <input
+              type="text"
+              name="price"
+              inputMode="decimal"
+              required
+              placeholder="0.00"
+              value={price}
+              onChange={(event) => setPrice(event.target.value)}
+            />
+          </label>
+          <label>
+            Sale date
+            <input
+              type="date"
+              name="date"
+              required
+              value={tradeDate}
+              onChange={(event) => setTradeDate(event.target.value)}
+            />
+          </label>
+          {state.error && (
+            <p className="trade-error" role="alert">
+              {state.error}
+            </p>
+          )}
+          <p className="trade-note">
+            Brokerage, charges and taxes are not captured yet. Do not use these
+            figures for tax filing.
           </p>
-        )}
-        <p className="trade-note">
-          Brokerage, charges and taxes are not captured yet. Do not use these
-          figures for tax filing.
-        </p>
-        <div className="trade-buttons">
-          <button type="button" onClick={close}>
-            Cancel
-          </button>
-          <button type="submit" disabled={pending || !complete}>
-            {pending
-              ? "Saving…"
-              : type === "BUY"
-                ? "Save purchase"
-                : "Save sale"}
-          </button>
-        </div>
-      </form>
+          <div className="trade-buttons">
+            <button type="button" onClick={close}>
+              Cancel
+            </button>
+            <button type="submit" disabled={pending || !complete}>
+              {pending ? "Saving…" : "Save sale"}
+            </button>
+          </div>
+        </form>
+      )}
     </dialog>
   );
 }

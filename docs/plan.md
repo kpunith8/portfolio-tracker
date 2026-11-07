@@ -8,6 +8,7 @@ The app tracks an individual's investments using user-owned transactions and FYE
 - Owner-only FYERS quotes, selected historical baselines, daily dashboard history and an on-demand Live Market stream, with dated fallback and incomplete-data disclosures.
 - Purchase-level CAGR and investment XIRR for supported inputs. Value charts reflect changing holdings, not cash-flow-adjusted returns.
 - Existing seeded ETFs appear under Stocks; missing brokerage and taxes on imported purchases are disclosed.
+- Manual stock purchase entry and CSV review use a shared FYERS symbol catalog; CSV purchases are saved atomically with retry protection and CSV provenance.
 
 ## Remaining work
 
@@ -20,8 +21,8 @@ The app tracks an individual's investments using user-owned transactions and FYE
 
 ### Import and export
 
-- Provide a versioned UTF-8 CSV template and a preview that validates rows, resolves tickers and flags duplicates without writes.
-- Commit imports atomically and idempotently, with transaction provenance, ownership checks and rollback on error; test malformed files, retries and concurrent writes.
+- Extend purchase CSV preview with versioned templates and detection of possible duplicates against existing ledger entries.
+- Expand import support beyond purchases and exercise concurrent imports and catalog refreshes.
 - Provide useful exports with formula-triggering cells escaped. A one-off seed is not a general import workflow.
 
 ### Sold investments and tax reporting

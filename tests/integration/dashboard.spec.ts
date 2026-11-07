@@ -48,10 +48,43 @@ test("empty portfolio offers a way to record a purchase", async ({ page }) => {
   ).toBeVisible();
   await page.getByRole("button", { name: "Record purchase" }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
-  await page.getByLabel("NSE ticker symbol").fill("TEST");
+  await page.getByLabel("Stock ticker or company").fill("TEST");
+  await page.getByRole("button", { name: /TEST · NSE/ }).click();
   await page.getByLabel("Quantity").fill("2");
   await page.getByLabel("Purchase price per share").fill("25");
   await page.getByLabel("Purchase date").fill("2026-11-01");
   await page.getByRole("button", { name: "Save purchase" }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+});
+
+test("CSV preview repairs invalid symbols and limits visible rows", async ({
+  page,
+}) => {
+  await page.goto("/dashboard?view=portfolio");
+  await page.getByRole("button", { name: "Record purchase" }).click();
+  await page.getByRole("tab", { name: "Import .csv" }).click();
+
+  const csv =
+    "symbol,exchange,quantity,price,date\n" +
+    Array.from(
+      { length: 11 },
+      (_, i) => `${i === 0 ? "WRONG" : "TEST"},NSE,2,25.50,2026-01-01`,
+    ).join("\n");
+
+  await page.getByLabel("Choose CSV file").setInputFiles({
+    name: "purchases.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from(csv),
+  });
+  await expect(page.locator(".purchase-table tbody tr")).toHaveCount(10);
+  await expect(page.getByText("Select a matching symbol")).toBeVisible();
+  await page.getByRole("button", { name: "Add 11 purchases" }).click();
+  await expect(page.locator(".trade-error[role=alert]")).toContainText("WRONG");
+  await page.getByLabel("Ticker for row 1", { exact: true }).fill("ALPHA");
+  await page.getByRole("button", { name: /ALPHA · BSE/ }).click();
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await expect(page.locator(".purchase-table tbody tr")).toHaveCount(1);
+  await page.getByRole("button", { name: "Remove row 11" }).click();
+  await page.getByRole("button", { name: "Add 10 purchases" }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });
