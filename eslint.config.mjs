@@ -41,7 +41,8 @@ export default defineConfig([
     },
   },
   globalIgnores([
-    ".next/**",
+    "**/.next/**",
+    "playwright/.cache/**",
     "out/**",
     "build/**",
     "coverage/**",

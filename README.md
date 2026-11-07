@@ -55,12 +55,18 @@ See the [technical specification](docs/technical-specification.md) for architect
 
 ## Development commands
 
-| Command                                                                                 | Purpose                                                                          |
-| --------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| `npm run dev` / `npm run build` / `npm run start`                                       | Develop, build, or serve the production build                                    |
-| `npm run lint` / `npm run format:check` / `npm run typecheck`                           | Check lint, formatting and types                                                 |
-| `npm run test:unit` / `npm run test:server`                                             | Run domain and server tests (server tests require Node.js 22.15+)                |
-| `npm run test:db-schema` / `npm run test:db-ledger` / `npm run test:db-delete-purchase` | Run database tests against an isolated development database                      |
-| `npm run test:e2e`                                                                      | Run Playwright tests; browser tests and CI authentication are not yet configured |
+| Command                                                                                 | Purpose                                                                       |
+| --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `npm run dev` / `npm run build` / `npm run start`                                       | Develop, build, or serve the production build                                 |
+| `npm run lint` / `npm run format:check` / `npm run typecheck`                           | Check lint, formatting and types                                              |
+| `npm test` / `npm run test:unit` / `npm run test:server`                                | Run both suites or either suite individually, with coverage (Node.js 22.15+)  |
+| `npm run test:db-schema` / `npm run test:db-ledger` / `npm run test:db-delete-purchase` | Run database tests against an isolated development database                   |
+| `npm run test:component` / `npm run test:integration`                                   | Run Playwright React component tests or local fixture-based integration tests |
 
 ESLint enforces blank lines around functions, types, exports and statement groups while keeping related variable declarations together; `npm run lint:fix` applies the spacing rules. Staged source files are linted and formatted by Git hooks; GitHub Actions checks lint, formatting, types and build. Keep documentation and task status current when behavior or setup changes.
+
+The Node.js test runner prints line, branch and function coverage for loaded files under `src/` after each unit or server test run. Untested files that are never loaded, UI/browser coverage, and database integration scripts are not included, so the total is not whole-application coverage.
+
+Install Playwright Chromium once with `npx playwright install chromium`. During development and before committing, run the relevant browser spec only, for example `npm run test:component -- tests/components/table.spec.tsx` or `npm run test:integration -- tests/integration/dashboard.spec.ts`; use `--grep` to select an individual test. Run `npm test` for the unit and server suites. GitHub Actions runs all three suites on pull requests and pushes.
+
+The integration suite starts a separate local Next.js fixture application on port 3100, renders the real landing and dashboard routes with two sample holdings and seven history points, and replaces authentication, portfolio data, provider and trade actions with local stubs. It does not use Kinde, a database or FYERS, and it must not reuse a running app server. These tests verify UI integration and mock action wiring, not real authentication, SQL, persistence, provider behavior or production deployment; use separate isolated integration/provider checks for those boundaries.

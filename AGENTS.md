@@ -10,7 +10,8 @@ This is a Next.js App Router, React and TypeScript personal portfolio tracker us
 - Use decimal arithmetic for financial amounts and quantities; preserve transaction history, source dates, stale/missing-data states and the 1 GB database budget. Never invent prices, returns or tax classifications.
 - Distinguish investment P/L from taxable gain; verify current primary sources and test date boundaries and FIFO before changing Indian tax logic.
 - Keep interfaces responsive and keyboard accessible, label icon-only controls, respect reduced motion and clearly label example data; use `lucide-react` for icons.
-- Run `npm run lint`, `npm run format:check`, `npm run typecheck` and `npm run build` for relevant changes; run affected unit/server tests and add focused tests for financial, security or other nontrivial logic.
+- Run `npm test` after changes, plus lint, format, typecheck and build when relevant; before committing, run the affected Playwright component or integration spec rather than the entire browser suite. CI runs all suites on pull requests.
+- Keep browser tests focused on page loads, meaningful actions, sorting and important edge cases, not exhaustive label or minor presentation checks. Use small local fixtures and mocked database/FYERS boundaries; never connect integration tests to real services.
 - Review affected documentation for every behavior, setup, dependency or workflow change; record reproducible limitations without secrets and update task status only when acceptance criteria are met.
 
 ## Refactoring and architecture
