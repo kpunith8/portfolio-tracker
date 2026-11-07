@@ -29,7 +29,7 @@ export async function searchSymbols(query: string): Promise<SymbolOption[]> {
   const sql = database();
   const rows =
     await sql`SELECT fyers_symbol, trading_symbol, exchange, name, series FROM fyers_symbol_catalog
-    WHERE upper(trading_symbol) LIKE ${safe + "%"} OR upper(name) LIKE ${"%" + safe + "%"} OR upper(fyers_symbol) = ${term}
+    WHERE upper(trading_symbol) LIKE ${"%" + safe + "%"} OR upper(name) LIKE ${"%" + safe + "%"} OR fyers_symbol = ${term}
     ORDER BY CASE WHEN upper(trading_symbol)=${term} THEN 0 WHEN upper(trading_symbol) LIKE ${safe + "%"} THEN 1 ELSE 2 END, trading_symbol, exchange, fyers_symbol LIMIT 20`;
 
   return rows.map((r) => ({
