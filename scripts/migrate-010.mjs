@@ -18,6 +18,7 @@ if (!process.env.DATABASE_URL) {
       ),
       "utf8",
     );
+
     await sql.query(migration);
     console.log("Migration 010 is applied.");
   } catch {

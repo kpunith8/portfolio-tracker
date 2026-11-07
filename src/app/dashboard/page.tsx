@@ -29,6 +29,7 @@ const nav = [
   { name: "Tax report", icon: FileText, view: "tax" },
   { name: "Settings", icon: Settings, view: "settings" },
 ];
+
 export default async function Dashboard({
   searchParams,
 }: {
@@ -41,8 +42,10 @@ export default async function Dashboard({
   }>;
 }) {
   const auth = getKindeServerSession();
+
   if (!(await auth.isAuthenticated()))
     redirect("/api/auth/login?post_login_redirect_url=/dashboard");
+
   const user = await auth.getUser();
   const params = await searchParams;
   const asOf = currentMarketDay();
@@ -50,6 +53,7 @@ export default async function Dashboard({
   const sort = params.sort === "value" ? "value" : "date";
   const requested = params.view;
   const view = nav.some((n) => n.view === requested) ? requested! : "dashboard";
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -140,6 +144,7 @@ async function DashboardContent({
   let available = true;
   let data: Awaited<ReturnType<typeof readPortfolio>> | null = null;
   const marketStatus: MarketStatus = "cached";
+
   try {
     exists = !!(await findOwnPortfolio());
     if (exists && ["dashboard", "portfolio", "transactions"].includes(view))
@@ -154,6 +159,7 @@ async function DashboardContent({
   } catch {
     available = false;
   }
+
   return (
     <>
       {!available ? (

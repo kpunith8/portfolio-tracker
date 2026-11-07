@@ -10,18 +10,22 @@ import { database } from "../../server/db/database";
 import { subject } from "../../server/auth/subject";
 
 type Result = { error?: string; success?: boolean };
+
 export async function deletePurchase(
   _state: Result,
   form: FormData,
 ): Promise<Result> {
   const id = String(form.get("id") || "");
+
   if (!isUuid(id)) return { error: "Purchase not found." };
   try {
     const user = await subject();
     const sql = database();
+
     await deletePurchaseRecord(sql, user, id);
     updateTag(ledgerCacheTag(user));
     revalidatePath("/dashboard");
+
     return { success: true };
   } catch (error) {
     if (
@@ -32,12 +36,14 @@ export async function deletePurchase(
         error:
           "This purchase has a later recorded sale. It cannot be deleted until sale allocations can be recalculated.",
       };
+
     return {
       error:
         "Could not delete this purchase. Check your portfolio and try again.",
     };
   }
 }
+
 export async function recordTrade(
   _state: Result,
   form: FormData,
@@ -51,6 +57,7 @@ export async function recordTrade(
   const price = String(form.get("price") || "").trim();
   const date = String(form.get("date") || "");
   const lot = String(form.get("lot") || "");
+
   if (!/^\d{1,18}$/.test(quantity) || /^0+$/.test(quantity))
     return { error: "Enter a positive whole-number quantity." };
   if (
@@ -65,6 +72,7 @@ export async function recordTrade(
   try {
     const user = await subject();
     const sql = database();
+
     await recordTradeEntry(
       sql,
       user,
@@ -78,9 +86,11 @@ export async function recordTrade(
     );
     updateTag(ledgerCacheTag(user));
     revalidatePath("/dashboard");
+
     return { success: true };
   } catch (e) {
     const message = e instanceof Error ? e.message : "";
+
     if (message.includes("FIFO_OLDEST_FIRST"))
       return {
         error:
@@ -101,6 +111,7 @@ export async function recordTrade(
         error:
           "Enter a valid, non-future date and a positive whole-number quantity.",
       };
+
     return {
       error:
         "Could not save this transaction. Check your portfolio and try again.",

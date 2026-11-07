@@ -10,7 +10,9 @@ type Trade = {
   taxes: string;
   sale_cost: string | null;
 };
+
 type Quote = { price: string; date: string };
+
 export function portfolioHistory(
   trades: Trade[],
   quotes: Record<string, Quote>,
@@ -37,6 +39,7 @@ export function portfolioHistory(
   let totalCost = new Decimal(0);
   let activeCount = 0;
   let invalidCount = 0;
+
   function contribution(
     p: { quantity: Decimal; cost: Decimal; invalid: boolean },
     direction: 1 | -1,
@@ -54,6 +57,7 @@ export function portfolioHistory(
       activeCount += direction;
     }
   }
+
   return dates.map((date) => {
     while (
       tradeIndex < sortedTrades.length &&
@@ -66,6 +70,7 @@ export function portfolioHistory(
         lastTrade: trade.transaction_date,
         invalid: false,
       };
+
       if (positions.has(trade.instrument_id)) contribution(p, -1);
       if (trade.type === "BUY") {
         p.quantity = p.quantity.plus(trade.quantity);
@@ -80,23 +85,30 @@ export function portfolioHistory(
         if (trade.sale_cost === null) p.invalid = true;
         else p.cost = p.cost.minus(trade.sale_cost);
       }
+
       p.lastTrade = trade.transaction_date;
       positions.set(trade.instrument_id, p);
       contribution(p, 1);
     }
+
     if (invalidCount > 0)
       return { date, value: null, estimated: true, estimatedCount: 0 };
+
     let total = totalCost;
     let estimatedCount = activeCount;
+
     if (date === to)
       for (const [id, p] of positions) {
         if (p.quantity.isZero()) continue;
+
         const quote = quotes[id];
+
         if (quote && quote.date <= to && quote.date >= p.lastTrade) {
           total = total.minus(p.cost).plus(p.quantity.mul(quote.price));
           estimatedCount--;
         }
       }
+
     return {
       date,
       value: total.toFixed(),
@@ -115,7 +127,9 @@ export function clipPortfolioHistory<T extends { date: string }>(
     (point) => point.date >= from && point.date <= to,
   );
   const prior = [...history].reverse().find((point) => point.date < from);
+
   if (prior && visible[0]?.date !== from)
     visible.unshift({ ...prior, date: from });
+
   return visible;
 }

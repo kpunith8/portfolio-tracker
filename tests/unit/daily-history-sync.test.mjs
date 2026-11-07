@@ -94,7 +94,9 @@ test("returns nothing for complete coverage and limits a request to 366 days", (
     ),
     null,
   );
+
   const result = missingHistoryRange("2020-01-01", "2024-12-31", [], []);
+
   assert.equal(result.end, "2024-12-31");
   assert.equal(
     (Date.parse(result.end) - Date.parse(result.start)) / 86400000 + 1,

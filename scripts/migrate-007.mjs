@@ -15,6 +15,7 @@ if (!process.env.DATABASE_URL) {
       new URL("../db/migrations/007_daily_price_history.sql", import.meta.url),
       "utf8",
     );
+
     await sql.query(migration);
     console.log("Migration 007 is applied.");
   } catch {
