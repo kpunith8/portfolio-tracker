@@ -52,6 +52,17 @@ test("empty portfolio offers a way to record a purchase", async ({ page }) => {
   await page.getByRole("button", { name: /TEST · NSE/ }).click();
   await page.getByLabel("Quantity").fill("2");
   await page.getByLabel("Purchase price per share").fill("25");
+
+  const today = await page.evaluate(() =>
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Kolkata",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date()),
+  );
+
+  await expect(page.getByLabel("Purchase date")).toHaveAttribute("max", today);
   await page.getByLabel("Purchase date").fill("2026-11-01");
   await page.getByRole("button", { name: "Save purchase" }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
@@ -93,6 +104,19 @@ test("CSV preview repairs invalid symbols and limits visible rows", async ({
     buffer: Buffer.from(csv),
   });
   await expect(page.locator(".purchase-table tbody tr")).toHaveCount(6);
+
+  const today = await page.evaluate(() =>
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Kolkata",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date()),
+  );
+
+  await expect(
+    page.getByLabel("date for row 1", { exact: true }),
+  ).toHaveAttribute("max", today);
   await expect(
     page.locator(".purchase-table tbody tr").first().locator("td").nth(1),
   ).toContainText("NSE");

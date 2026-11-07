@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { Trash2 } from "lucide-react";
 import { displayCompanyName } from "../../domain/company-name";
+import { marketDate } from "../../domain/market-date-utils";
 import { useRouter } from "next/navigation";
 import {
   parsePurchaseCsv,
@@ -137,6 +138,9 @@ export function PurchaseEntry({
   onPendingChange: (pending: boolean) => void;
 }) {
   const [tab, setTab] = useState<"manual" | "csv">("manual");
+  const [latestDate, setLatestDate] = useState(() =>
+    marketDate(Date.now() / 1000),
+  );
   const [manual, setManual] = useState<Row>({
     id: "manual",
     symbol: "",
@@ -329,6 +333,12 @@ export function PurchaseEntry({
               <input
                 required
                 type={key === "date" ? "date" : "text"}
+                max={key === "date" ? latestDate : undefined}
+                onFocus={
+                  key === "date"
+                    ? () => setLatestDate(marketDate(Date.now() / 1000))
+                    : undefined
+                }
                 inputMode={mode}
                 value={manual[key]}
                 onChange={(e) => {
@@ -431,6 +441,15 @@ export function PurchaseEntry({
                                 <input
                                   aria-label={`${key} for row ${page * PREVIEW_PAGE_SIZE + index + 1}`}
                                   type={key === "date" ? "date" : "text"}
+                                  max={key === "date" ? latestDate : undefined}
+                                  onFocus={
+                                    key === "date"
+                                      ? () =>
+                                          setLatestDate(
+                                            marketDate(Date.now() / 1000),
+                                          )
+                                      : undefined
+                                  }
                                   value={row[key]}
                                   onChange={(e) =>
                                     edit(row.id, { [key]: e.target.value })
