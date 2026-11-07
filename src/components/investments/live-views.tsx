@@ -383,7 +383,6 @@ function TradeModal({
       <div className="trade-dialog-header">
         <div>
           <h2>{type === "BUY" ? "Record a purchase" : "Record a sale"}</h2>
-          <p>Enter the details from your investment records.</p>
         </div>
         <button
           type="button"

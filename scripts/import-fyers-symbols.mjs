@@ -1,4 +1,3 @@
-import { readFile } from "node:fs/promises";
 import { neon } from "@neondatabase/serverless";
 import nextEnv from "@next/env";
 
@@ -8,11 +7,17 @@ if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is missing.");
 const rows = [];
 
 for (const exchange of ["NSE", "BSE"]) {
-  const path = new URL(
-    `../data/fyers/${exchange}_CM_sym_master.json`,
-    import.meta.url,
+  const response = await fetch(
+    `https://public.fyers.in/sym_details/${exchange}_CM_sym_master.json`,
+    { signal: AbortSignal.timeout(30_000) },
   );
-  const data = JSON.parse(await readFile(path, "utf8"));
+
+  if (!response.ok)
+    throw new Error(
+      `Could not download ${exchange} symbol master (HTTP ${response.status}).`,
+    );
+
+  const data = await response.json();
   const entries = Object.entries(data);
 
   if (entries.length < 1000)

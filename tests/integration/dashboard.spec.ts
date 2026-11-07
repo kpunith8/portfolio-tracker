@@ -57,6 +57,21 @@ test("empty portfolio offers a way to record a purchase", async ({ page }) => {
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });
 
+test("symbol search identifies BSE bonds and formats company names", async ({
+  page,
+}) => {
+  await page.goto("/dashboard?view=portfolio");
+  await page.getByRole("button", { name: "Record purchase" }).click();
+  await page.getByLabel("Stock ticker or company").fill("BOND");
+  await expect(
+    page.getByRole("button", { name: "BOND · BSE F Example Bond Limited" }),
+  ).toBeVisible();
+  await page.getByLabel("Stock ticker or company").fill("ALPHA");
+  await expect(
+    page.getByRole("button", { name: "ALPHA · BSE Alpha Limited" }),
+  ).toBeVisible();
+});
+
 test("CSV preview repairs invalid symbols and limits visible rows", async ({
   page,
 }) => {
@@ -68,7 +83,8 @@ test("CSV preview repairs invalid symbols and limits visible rows", async ({
     "symbol,exchange,quantity,price,date\n" +
     Array.from(
       { length: 11 },
-      (_, i) => `${i === 0 ? "WRONG" : "TEST"},NSE,2,25.50,2026-01-01`,
+      (_, i) =>
+        `${i === 0 || i === 10 ? "WRONG" : "TEST"},NSE,2,25.50,2026-01-01`,
     ).join("\n");
 
   await page.getByLabel("Choose CSV file").setInputFiles({
@@ -76,15 +92,36 @@ test("CSV preview repairs invalid symbols and limits visible rows", async ({
     mimeType: "text/csv",
     buffer: Buffer.from(csv),
   });
-  await expect(page.locator(".purchase-table tbody tr")).toHaveCount(10);
-  await expect(page.getByText("Select a matching symbol")).toBeVisible();
-  await page.getByRole("button", { name: "Add 11 purchases" }).click();
-  await expect(page.locator(".trade-error[role=alert]")).toContainText("WRONG");
+  await expect(page.locator(".purchase-table tbody tr")).toHaveCount(6);
+  await expect(
+    page.locator(".purchase-table tbody tr").first().locator("td").nth(1),
+  ).toContainText("NSE");
+
+  const tableFits = await page
+    .locator(".purchase-table-scroll")
+    .evaluate((element) => element.scrollWidth <= element.clientWidth);
+
+  expect(tableFits).toBe(true);
+  await expect(
+    page.getByLabel("Ticker for row 1", { exact: true }),
+  ).toHaveAttribute("aria-invalid", "true");
+  await expect(
+    page.getByRole("button", { name: "Add 11 purchases" }),
+  ).toBeDisabled();
   await page.getByLabel("Ticker for row 1", { exact: true }).fill("ALPHA");
   await page.getByRole("button", { name: /ALPHA · BSE/ }).click();
+  await expect(
+    page.getByLabel("Ticker for row 1", { exact: true }),
+  ).not.toHaveAttribute("aria-invalid", "true");
+  await expect(
+    page.getByRole("button", { name: "Add 11 purchases" }),
+  ).toBeDisabled();
   await page.getByRole("button", { name: "Next", exact: true }).click();
-  await expect(page.locator(".purchase-table tbody tr")).toHaveCount(1);
+  await expect(page.locator(".purchase-table tbody tr")).toHaveCount(5);
   await page.getByRole("button", { name: "Remove row 11" }).click();
+  await expect(
+    page.getByRole("button", { name: "Add 10 purchases" }),
+  ).toBeEnabled();
   await page.getByRole("button", { name: "Add 10 purchases" }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });

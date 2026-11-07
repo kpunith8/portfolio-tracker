@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Trash2 } from "lucide-react";
+import { displayCompanyName } from "../../domain/company-name";
 import { useRouter } from "next/navigation";
 import {
   parsePurchaseCsv,
@@ -18,15 +19,20 @@ import {
 
 type Row = PurchaseCsvRow & { fyersSymbol: string; id: string };
 
+const PREVIEW_PAGE_SIZE = 6;
+
 function SymbolSearch({
   value,
   onChange,
   label,
+  invalid = false,
 }: {
   value: string;
   onChange: (text: string, selected?: SymbolOption) => void;
   label: string;
+  invalid?: boolean;
 }) {
+  const errorId = useId();
   const [options, setOptions] = useState<SymbolOption[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -71,6 +77,8 @@ function SymbolSearch({
     >
       <input
         aria-label={label}
+        aria-invalid={invalid || undefined}
+        aria-describedby={invalid ? errorId : undefined}
         value={value}
         onChange={(e) => {
           setOpen(true);
@@ -81,6 +89,11 @@ function SymbolSearch({
         autoComplete="off"
         placeholder="Search ticker or company"
       />
+      {invalid && (
+        <span id={errorId} className="sr-only">
+          Select a matching symbol.
+        </span>
+      )}
       {open && value.trim().length >= 2 && (
         <div className="symbol-results" aria-label="Symbol results">
           {options.map((option) => (
@@ -94,9 +107,17 @@ function SymbolSearch({
               }}
             >
               <strong>
-                {option.symbol} · {option.exchange} {option.series}
+                {option.symbol} · {option.exchange}
+                {((option.exchange === "BSE" && option.series === "F") ||
+                  (option.series !== "A" &&
+                    options.filter(
+                      (item) =>
+                        item.symbol === option.symbol &&
+                        item.exchange === option.exchange,
+                    ).length > 1)) &&
+                  ` ${option.series || option.fyersSymbol}`}
               </strong>
-              <span>{option.name}</span>
+              <span>{displayCompanyName(option.name)}</span>
             </button>
           ))}
           {!options.length && (
@@ -382,77 +403,82 @@ export function PurchaseEntry({
                     </tr>
                   </thead>
                   <tbody>
-                    {rows.slice(page * 10, page * 10 + 10).map((row, index) => (
-                      <tr key={row.id}>
-                        <td>
-                          <SymbolSearch
-                            label={`Ticker for row ${page * 10 + index + 1}`}
-                            value={row.symbol}
-                            onChange={(text, selected) =>
-                              edit(row.id, {
-                                symbol: text,
-                                exchange: selected?.exchange || row.exchange,
-                                fyersSymbol: selected?.fyersSymbol || "",
-                              })
-                            }
-                          />
-                          {!row.fyersSymbol && (
-                            <small className="trade-error">
-                              Select a matching symbol
-                            </small>
-                          )}
-                        </td>
-                        <td>{row.exchange}</td>
-                        {(["quantity", "price", "date"] as const).map((key) => (
-                          <td key={key}>
-                            <input
-                              aria-label={`${key} for row ${page * 10 + index + 1}`}
-                              type={key === "date" ? "date" : "text"}
-                              value={row[key]}
-                              onChange={(e) =>
-                                edit(row.id, { [key]: e.target.value })
+                    {rows
+                      .slice(
+                        page * PREVIEW_PAGE_SIZE,
+                        page * PREVIEW_PAGE_SIZE + PREVIEW_PAGE_SIZE,
+                      )
+                      .map((row, index) => (
+                        <tr key={row.id}>
+                          <td>
+                            <SymbolSearch
+                              label={`Ticker for row ${page * PREVIEW_PAGE_SIZE + index + 1}`}
+                              value={row.symbol}
+                              invalid={!row.fyersSymbol}
+                              onChange={(text, selected) =>
+                                edit(row.id, {
+                                  symbol: text,
+                                  exchange: selected?.exchange || row.exchange,
+                                  fyersSymbol: selected?.fyersSymbol || "",
+                                })
                               }
                             />
                           </td>
-                        ))}
-                        <td>
-                          <button
-                            type="button"
-                            aria-label={`Remove row ${page * 10 + index + 1}`}
-                            onClick={() => {
-                              requestIds.current.CSV = null;
-                              setRows((previous) =>
-                                previous.filter((r) => r.id !== row.id),
-                              );
-                              setPage((current) =>
-                                Math.min(
-                                  current,
-                                  Math.max(
-                                    0,
-                                    Math.ceil((rows.length - 1) / 10) - 1,
+                          <td>{row.exchange || "—"}</td>
+                          {(["quantity", "price", "date"] as const).map(
+                            (key) => (
+                              <td key={key}>
+                                <input
+                                  aria-label={`${key} for row ${page * PREVIEW_PAGE_SIZE + index + 1}`}
+                                  type={key === "date" ? "date" : "text"}
+                                  value={row[key]}
+                                  onChange={(e) =>
+                                    edit(row.id, { [key]: e.target.value })
+                                  }
+                                />
+                              </td>
+                            ),
+                          )}
+                          <td>
+                            <button
+                              type="button"
+                              aria-label={`Remove row ${page * PREVIEW_PAGE_SIZE + index + 1}`}
+                              onClick={() => {
+                                requestIds.current.CSV = null;
+                                setRows((previous) =>
+                                  previous.filter((r) => r.id !== row.id),
+                                );
+                                setPage((current) =>
+                                  Math.min(
+                                    current,
+                                    Math.max(
+                                      0,
+                                      Math.ceil(
+                                        (rows.length - 1) / PREVIEW_PAGE_SIZE,
+                                      ) - 1,
+                                    ),
                                   ),
-                                ),
-                              );
-                            }}
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                                );
+                              }}
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
                   </tbody>
                 </table>
               </div>
               <div className="purchase-pagination">
                 <span>
                   {rows.length} purchases · Page {page + 1} of{" "}
-                  {Math.ceil(rows.length / 10)}
+                  {Math.ceil(rows.length / PREVIEW_PAGE_SIZE)}
                 </span>
                 <button disabled={page === 0} onClick={() => setPage(page - 1)}>
                   Previous
                 </button>
                 <button
-                  disabled={(page + 1) * 10 >= rows.length}
+                  disabled={(page + 1) * PREVIEW_PAGE_SIZE >= rows.length}
                   onClick={() => setPage(page + 1)}
                 >
                   Next
@@ -471,7 +497,9 @@ export function PurchaseEntry({
             </button>
             <button
               type="submit"
-              disabled={pending || !rows.length}
+              disabled={
+                pending || !rows.length || rows.some((row) => !row.fyersSymbol)
+              }
               onClick={() => void save(rows, "CSV")}
             >
               {pending ? "Working…" : `Add ${rows.length || ""} purchases`}

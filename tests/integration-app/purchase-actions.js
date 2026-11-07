@@ -9,6 +9,13 @@ const symbols = [
     fyersSymbol: "NSE:TEST-EQ",
   },
   {
+    symbol: "BOND",
+    exchange: "BSE",
+    name: "EXAMPLE BOND LIMITED",
+    series: "F",
+    fyersSymbol: "BSE:BOND-F",
+  },
+  {
     symbol: "ALPHA",
     exchange: "BSE",
     name: "Alpha Limited",
