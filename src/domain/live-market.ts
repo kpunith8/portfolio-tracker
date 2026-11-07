@@ -13,35 +13,45 @@ export function marketTotals(
     holdings.length && holdings.every((h) => h.value !== null)
       ? holdings.reduce((sum, h) => sum.plus(h.value!), new Decimal(0))
       : null;
+
   return { invested, current, profit: current?.minus(invested) ?? null };
 }
 
 export function parseMarketTick(input: unknown, symbols: Set<string>) {
   if (!input || typeof input !== "object") return null;
+
   const tick = input as Record<string, unknown>;
+
   if (
     tick.type !== "sf" ||
     typeof tick.symbol !== "string" ||
     !symbols.has(tick.symbol)
   )
     return null;
+
   const decimal = (value: unknown) => {
     if (
       (typeof value !== "number" && typeof value !== "string") ||
       !/^\d+(?:\.\d+)?$/.test(String(value))
     )
       return null;
+
     return validMarketPrice(String(value))?.toFixed() ?? null;
   };
+
   const price = decimal(tick.ltp);
+
   if (!price) return null;
+
   const timestamp = Number(tick.last_traded_time);
+
   if (
     !Number.isInteger(timestamp) ||
     timestamp < 946684800 ||
     timestamp > Math.floor(Date.now() / 1000) + 60
   )
     return null;
+
   return {
     symbol: tick.symbol,
     price,
@@ -50,13 +60,16 @@ export function parseMarketTick(input: unknown, symbols: Set<string>) {
     tradedAt: timestamp,
   };
 }
+
 export function dailyMovement(
   quantity: string,
   price: string,
   previousClose: string | null,
 ) {
   if (!previousClose || new Decimal(previousClose).lte(0)) return null;
+
   const change = new Decimal(price).minus(previousClose);
+
   return {
     change,
     amount: change.mul(quantity),
@@ -77,6 +90,7 @@ export function mergeMarketTick(
   incoming: MarketTick,
 ): MarketTick {
   if (previous && incoming.tradedAt < previous.tradedAt) return previous;
+
   return {
     ...incoming,
     previousClose:
@@ -94,6 +108,7 @@ export function compareNullableDecimal(
 ) {
   if (left === null || right === null)
     return left === right ? 0 : left === null ? 1 : -1;
+
   return (ascending ? 1 : -1) * left.cmp(right);
 }
 
@@ -105,6 +120,7 @@ export function returnPercent(
   cost: Decimal.Value,
 ) {
   const invested = new Decimal(cost);
+
   return profit === null || invested.isZero()
     ? null
     : new Decimal(profit).div(invested).mul(100);

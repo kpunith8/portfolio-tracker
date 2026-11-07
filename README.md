@@ -1,126 +1,72 @@
 # Portfolio Tracker
 
-A personal investment tracker for recording purchases and sales and understanding portfolio performance. Each user's portfolio is intended to be independent. The current application includes a Next.js landing page, basic Kinde authentication, and a protected stock portfolio with manual purchase and sale entry.
+A personal investment tracker built with Next.js, Kinde, Neon PostgreSQL and FYERS. It records user-owned stock purchases and FIFO sales, shows holdings and transactions, and displays dated market prices and portfolio history. FYERS supplies market data; it does not synchronize broker holdings or place orders.
 
-## Getting started
+## Setup
 
-Install a Node.js version supported by the Next.js version in `package-lock.json`, then run:
+Use a Node.js version supported by the installed Next.js release. Create a private `.env.local` with the variables below, configure the corresponding provider applications, then run `npm ci` and `npm run dev`. Open [localhost:3000](http://localhost:3000). Never commit credentials or tokens.
 
-```sh
-npm ci
-npm run dev
-```
+### Kinde
 
-Open [http://localhost:3000](http://localhost:3000).
+Create a Kinde backend web application and set:
 
-## Kinde authentication
+- `KINDE_CLIENT_ID`, `KINDE_CLIENT_SECRET`, `KINDE_ISSUER_URL`: application credentials and issuer.
+- `KINDE_SITE_URL`, `KINDE_POST_LOGOUT_REDIRECT_URL`: `http://localhost:3000` locally.
+- `KINDE_POST_LOGIN_REDIRECT_URL`: `http://localhost:3000/dashboard` locally.
 
-Create a Kinde backend web application. Create `.env.local` with `KINDE_CLIENT_ID`, `KINDE_CLIENT_SECRET`, `KINDE_ISSUER_URL`, `KINDE_SITE_URL`, `KINDE_POST_LOGOUT_REDIRECT_URL`, and `KINDE_POST_LOGIN_REDIRECT_URL`; keep the file private. For local development, use `http://localhost:3000` as the site and logout URL and `http://localhost:3000/dashboard` as the post-login URL. In Kinde, add `http://localhost:3000/api/auth/kinde_callback` to the allowed callback URLs and `http://localhost:3000` to the allowed logout redirect URLs. Configure the corresponding production URLs when deploying. Sign in or register from the landing page to reach the protected `/dashboard`. The portfolio displays user-scoped stored transactions and, when FYERS is connected, the latest available dated prices. Kinde credentials and allowed URLs must match the local origin.
+Allow `http://localhost:3000/api/auth/kinde_callback` as a callback and `http://localhost:3000` as a logout URL in Kinde. Configure matching HTTPS URLs for production. See the [Kinde Next.js SDK documentation](https://docs.kinde.com/developer-tools/sdks/backend/nextjs-sdk/).
 
-See the [Kinde App Router starter](https://github.com/kinde-starter-kits/kinde-nextjs-app-router-starter-kit) and [SDK documentation](https://docs.kinde.com/developer-tools/sdks/backend/nextjs-sdk/) for setup and configuration.
+### Neon
 
-## Commands
+Set `DATABASE_URL` to a private Neon PostgreSQL connection string. Use separate databases or branches for development, preview and production. Run versioned migrations explicitly and in order against the intended database: `npm run db:migrate:001` through `npm run db:migrate:010`. Migration 001 predates the migration ledger and fails if its table already exists; inspect existing schema and back up data before migrating. Never run migrations automatically at startup or build time.
 
-```sh
-npm run dev        # Start the development server
-npm run build      # Create a production build
-npm run start      # Serve a production build
-npm run lint       # Run ESLint
-npm run format     # Format source files
-npm run format:check # Check source formatting
-npm run typecheck  # Check TypeScript types
-npm run test:unit  # Run domain tests
-npm run test:server # Check server query contracts (Node.js 22.15 or newer)
-npm run test:e2e   # Run Playwright tests once they are added
-```
+The server uses the Neon serverless driver and application-level user scoping, not database row-level security; restrict database credentials and assess additional isolation before broad multi-user use. The database storage budget is 1 GB, including indexes and user data.
 
-ESLint and Prettier run on staged source files before each commit. GitHub Actions checks both on pushes and pull requests. Install dependencies with `npm ci` to set up the Git hook.
+### FYERS
 
-## Project layout
+The configured Kinde owner can connect an individual FYERS app with Market Data permission in **Settings**. Set these server-only variables:
 
-- `src/app/` — App Router pages, Kinde routes, and styles.
-- `src/components/dashboard/` — dashboard components, including the Recharts performance chart.
-- `src/server/portfolio/` and `src/components/investments/` — user-scoped ledger reads and portfolio views.
-- `.github/workflows/ci.yml` — lint, formatting, type, and build checks; future Playwright job.
-- `docs/technical-specification.md` — proposed architecture, data model, and calculation rules.
-- `tasks/plan.md` — product scope and implementation plan.
-- `tasks/todo.md` — incremental delivery checklist.
+- `FYERS_APP_ID` and `FYERS_SECRET_ID`: FYERS application credentials.
+- `FYERS_REDIRECT_URI`: the exact registered callback, for example `http://localhost:3000/api/fyers/callback` if accepted by FYERS; use HTTPS in production.
+- `FYERS_OWNER_KINDE_ID`: the owner's Kinde user ID; only this user can connect and use FYERS market data.
+- `FYERS_SESSION_SECRET`: a unique random secret of at least 32 characters; generate one with `openssl rand -hex 32`.
 
-## Planned direction
+Restart the server after changing variables, sign in as the owner and select **Connect FYERS**. FYERS and Kinde sessions are separate; FYERS tokens expire daily at 6:30 a.m. and may expire earlier. Reconnect in Settings when required. The encrypted, HTTP-only cookie is bound to the Kinde user; tokens are not stored in the database. Confirm provider entitlements and data-use rights before extending access to other users.
 
-The app supports manual NSE stock purchases and FIFO sales for a Kinde user with a portfolio. Holdings and the transaction list use stored entries. Dashboard and portfolio views render cached prices first, then refresh FYERS quotes in the background when the owner is connected; investment details fetch five dated baseline closes on demand. The dashboard chart reconstructs holdings at daily FYERS closes, with a latest quote point only when every held ticker has a same-day quote. Purchases and sales affect its value; it is not an investment return. Missing prices leave gaps. FYERS adjusts historical prices, and recorded quantities or older cached prices may use a different adjustment basis; values need review around corporate actions. Dashboard history and summary transaction reads are cached per authenticated user with a 60-second revalidation interval and invalidated immediately by in-app trades; out-of-band changes may remain stale until revalidation completes. The details chart values the shares held at each selected historical close, so purchases and sales affect the chart; per-purchase CAGR uses remaining shares and investment XIRR uses recorded dated cash flows and the latest quote. XIRR is unavailable for multiple cash-flow sign changes or unsupported roots. Current holding values and P/L show unavailable when a quote is missing or predates the latest trade; quote refresh continues across batches of up to 50 symbols; portfolio and transaction sorting and 20-item pagination run on the server; ticker details load only that ticker’s transactions. The dashboard reads the full ledger on the server for its history chart, but sends only summaries and chart points to the browser. Tax report, CSV import, mutual funds, and debt remain planned. Sales preserve their purchase and sale records; the expanded view hides fully sold lots. Trades preceding a later sale are rejected until replay is implemented. Brokerage, taxes, transaction editing and duplicate submission protection are not supported yet; do not rely on the figures for tax filing.
+## Usage and limitations
 
-Purchase and sale forms enable saving once their required fields are filled; the server still validates each trade before recording it.
+- Record stock purchases and FIFO sales; holdings and transaction lists use stored transactions, with server-side sorting and 20-row pagination. ETFs from the existing import appear under Stocks.
+- Purchase deletion is permanent and requires confirmation; it is blocked when a sale exists on or after the purchase date. Oversells and trades dated before a later sale are rejected because sale-allocation replay is not implemented.
+- The dashboard plots reconstructed holdings at available daily closes; investment details show dated value history, purchase-level CAGR and investment XIRR when supported. Purchases and sales affect value charts, so they are not return charts; XIRR is unavailable for ambiguous or unsupported cash flows.
+- Missing or outdated prices are labeled or shown as unavailable; historical coverage can be incomplete and FYERS corporate-action adjustments may not match recorded quantities or older cached prices.
+- Brokerage, taxes, edits, duplicate-submission protection, general CSV import, tax reports, mutual funds and debt workflows remain incomplete. Existing seeded purchases with unknown brokerage or taxes disclose the omission; figures are not filing-ready.
+- The owner's **Live Market** view streams up to 100 symbols and falls back to dated quotes; 1D movement uses current holdings and previous close, not cash-flow-adjusted return. Missing required prices or previous closes make affected totals unavailable.
 
-An expanded portfolio holding has a delete action for a purchase. Deletion requires confirmation, permanently removes that purchase, and can change historical values and returns. Purchases with a sale on or after their purchase date cannot be deleted until sale-allocation replay is supported. Apply `npm run db:migrate:008` after migration 006 to enable deletion; `npm run test:db-delete-purchase` verifies deletion and ownership on an isolated development database. Purchase editing remains unsupported.
+## Freshness and operations
 
-The planned deployment target is Vercel with managed PostgreSQL, while keeping application logic portable. Never commit credentials or local environment files.
+- The dashboard's full ledger is cached per authenticated user for 60 seconds; in-app trades immediately invalidate that user's cache, while out-of-band changes may remain stale until revalidation. Portfolio, transaction and detail pages use direct scoped queries.
+- Neon stores one current FYERS quote per ticker and portfolio; stale or missing quotes trigger a background refresh after five minutes, in batches of up to 50. Failure retains the dated quote, and the FYERS-reported date does not guarantee the time of the last exchange trade.
+- Ticker details use five baseline periods (7, 30 and 90 days, six months and one year), reusing successful checks from the current India date; up to seven baseline rows are permitted, including legacy periods.
+- Dashboard daily closes and completed coverage are stored separately. Background backfill requests bounded ranges under a lease; missing coverage, partial data and unavailable dates can leave gaps. `no_data` is retried after 24 hours; historical closes are not overwritten. An unambiguous exact ISIN match can provide labeled BSE fallback for missing NSE history. Public holidays may be retried because there is no exchange holiday calendar, and older coverage has not been automatically repaired.
+- FYERS HTTP requests use `no-store`; a shared database limiter reserves one slot per two seconds, caps the app at 4,000 requests per India day and pauses for at least 60 seconds after a 429. No application-managed portfolio data is persisted in browser storage.
+- Live Market uses an on-demand server worker and a transient stream; sharing is process-local, so separate server instances can compete for sockets. In Vercel production, streams rotate after at most 270 seconds and failures retry with backoff; local development and previews do not automatically rotate or retry failures. Vercel system environment variables must be exposed for production detection. Verify production streaming and rotation during market hours after deployment.
 
-The Portfolio **Live Market** tab lists open stock holdings on one page. For the configured FYERS owner it opens an on-demand server-side Data Socket and forwards validated updates to the active tab; the existing dated quote refresh remains the fallback. Daily movement uses the current quantity and FYERS previous close, not cash-flow-adjusted return. Totals are unavailable if a required price or previous close is missing. The socket closes when the tab is left or hidden, or when the hosting function reaches its duration limit; it reconnects after a short delay with backoff for repeated failures. Expired sessions require reconnecting in Settings. This initial implementation supports up to 100 symbols, shares a connection within one server process, and has not yet been verified during an open market. Separate server instances may open competing sockets; failures show saved prices. The last received prices are kept in memory while the portfolio view remains open, including across tab switches and reconnects; they are not persisted in browser storage. Column sorting is local to the view and defaults to Market price percentage, highest first; Market price sorts by the displayed 1D percentage and Returns sorts by the displayed return percentage, with unavailable percentages last.
+See the [technical specification](docs/technical-specification.md) for architecture and data invariants, and [product plan](docs/plan.md) for remaining work.
 
-## Caching and freshness
+## Development commands
 
-The application uses the following caches, scoped to the authenticated portfolio. Transactions are authoritative user data; cached copies and market prices are derived data.
+| Command                                                                                 | Purpose                                                                       |
+| --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `npm run dev` / `npm run build` / `npm run start`                                       | Develop, build, or serve the production build                                 |
+| `npm run lint` / `npm run format:check` / `npm run typecheck`                           | Check lint, formatting and types                                              |
+| `npm test` / `npm run test:unit` / `npm run test:server`                                | Run both suites or either suite individually, with coverage (Node.js 22.15+)  |
+| `npm run test:db-schema` / `npm run test:db-ledger` / `npm run test:db-delete-purchase` | Run database tests against an isolated development database                   |
+| `npm run test:component` / `npm run test:integration`                                   | Run Playwright React component tests or local fixture-based integration tests |
 
-- **Dashboard ledger — Next.js Data Cache.** The dashboard’s full transaction query uses `unstable_cache` in `src/server/portfolio/ledger.ts`. The authenticated Kinde subject is passed into the cached function and the cache key/tag includes a hash of that subject, preventing one user’s cached result from being reused for another. The revalidation interval is 60 seconds, not a promise that data refreshes exactly every minute: a later request may receive a stale result while revalidation occurs. A successful in-app trade calls `updateTag` for that user and `revalidatePath` so the next read sees the write. Database edits made outside the app do not invalidate the tag and may stay stale until revalidation completes. The portfolio and transaction list pages query their 20-item pages directly; ticker details query that ticker’s transactions directly. The dashboard still reads the full ledger on the server to build its summaries and daily history chart, sending only the resulting summaries and chart points to the browser. Cache persistence and sharing depend on the Next.js deployment environment; this code does not configure Redis or another shared cache service.
-- **Latest FYERS quotes — Neon PostgreSQL.** Parsed prices, FYERS-reported dates and retrieval times are stored in portfolio-owned `price_observations` rows, with one current FYERS quote per ticker and portfolio. The dashboard and portfolio first show the stored values, then request a background refresh for held tickers whose quotes are missing or at least five minutes old. Five minutes is a freshness threshold for attempting an update, not an expiry: a cached quote remains in the database and can be shown with its date when FYERS is unavailable or the session has expired. At most 50 stale symbols are sent in one quote request; if more are stale, a later refresh is needed for the rest. The displayed FYERS date is provider-reported and does not guarantee the time of the last exchange trade.
-- **Historical closes — Neon PostgreSQL.** `ticker_period_baselines` keeps one replaceable close per portfolio, ticker and period, including the requested and actual market dates. Ticker details currently use 7, 30 and 90 days, six months and 365 days. An available baseline already checked for the current Asia/Kolkata date is reused; otherwise the app attempts to refresh that period when details open. A successful refresh replaces the row; a failed refresh leaves the prior dated value in place. The schema permits seven periods, so earlier 15- and 60-day rows may still exist, but the UI no longer refreshes them. Details reuse daily closes for covered dates before requesting an individual baseline. Older observations that predate the compact-cache migration are preserved.
-- **Daily portfolio history — Neon PostgreSQL.** Migration 007 adds portfolio-scoped daily closes, successful date-range coverage and a short-lived sync lease. On dashboard load the owner’s browser requests one missing range at a time, at most 366 calendar days, using the shared FYERS limiter. It stops after five minutes or on failure and resumes on a later visit or retry; closing the page stops the work. A button displays newly saved history. Only completed prior-day candles are requested; FYERS Standard limits initial history to five years. Existing prices and completed ranges are skipped. Corporate-action adjustment basis remains unverified and cached closes are not refreshed for later actions. A failed or partial response may leave history incomplete. Apply `npm run db:migrate:007` before using this feature.
+ESLint enforces blank lines around functions, types, exports and statement groups while keeping related variable declarations together; `npm run lint:fix` applies the spacing rules. Staged source files are linted and formatted by Git hooks; GitHub Actions checks lint, formatting, types and build. Keep documentation and task status current when behavior or setup changes.
 
-FYERS HTTP requests use `cache: "no-store"`; the market-data cache described above is the parsed data stored in Neon, not an HTTP response cache. The shared `fyers_rate_limits` table coordinates requests by FYERS app across server instances: one reserved slot every two seconds, an app-side limit of 4,000 requests per India calendar day, and a pause of at least 60 seconds after HTTP 429. This table is rate-limit state, not a price cache. A refresh can be throttled or fail, so neither the five-minute threshold nor same-day baseline reuse guarantees fresh data. Browser component memoization and in-flight request deduplication are temporary UI optimizations; there is no application-managed persistent browser cache for portfolio data. Next.js may also keep navigation data in its framework-managed client router cache.
+The Node.js test runner prints line, branch and function coverage for loaded files under `src/` after each unit or server test run. Untested files that are never loaded, UI/browser coverage, and database integration scripts are not included, so the total is not whole-application coverage.
 
-Migration 009 adds a status to history coverage. FYERS `no_data` intervals are recorded as unavailable and skipped for 24 hours so other symbols can continue syncing; they are not treated as successful price coverage. Migration 010 enables a BSE fallback when no primary-exchange closes are saved or there is a gap of more than seven days before the earliest primary-exchange close, using FYERS' public symbol master and an unambiguous exact ISIN match. It stores the provider symbol and separate fallback coverage, never replaces existing closes, and labels BSE data in the chart. BSE and NSE prices can differ, and unverified adjustment factors can affect historical values. Missing prices still produce gaps in portfolio totals. The chart's vertical axis fits the selected range rather than always starting at zero. Run `npm run db:migrate:009` after migration 007, then `npm run db:migrate:010`.
+Install Playwright Chromium once with `npx playwright install chromium`. During development and before committing, run the relevant browser spec only, for example `npm run test:component -- tests/components/table.spec.tsx` or `npm run test:integration -- tests/integration/dashboard.spec.ts`; use `--grep` to select an individual test. Run `npm test` for the unit and server suites. GitHub Actions runs all three suites on pull requests and pushes.
 
-New partial responses record missing weekdays as unavailable instead of marking the whole requested interval complete; these intervals can be retried. The chart uses observed price dates, so it may connect across a date with no prices for any holding. The app does not yet have an exchange holiday calendar, so public holidays may be retried as unavailable. Existing coverage marked complete before this change has not been repaired automatically; a read-only audit of the configured database found potentially incomplete ranges, but cannot distinguish holidays without a calendar. The sync now reads saved dates for one bounded candidate range at a time rather than transferring the full price history on every iteration.
-
-The FYERS session token is stored in an encrypted, HTTP-only, user-bound cookie; it is not a database cache entry. Only the configured owner can use that session. Preserve user scoping, trade-triggered invalidation, dated stale fallbacks and the storage limit when changing cache behavior. See `src/server/portfolio/ledger.ts`, `src/server/market-data/fyers.ts`, `src/server/market-data/history.ts`, and `src/app/dashboard/trade-actions.ts` for the implementation.
-
-## Continuous integration and browser tests
-
-GitHub Actions runs lint, formatting, TypeScript, and production build checks. Playwright is configured for Chromium, but its CI job remains disabled until browser tests and test authentication are added. To run future tests locally, install the browser once with `npx playwright install chromium`, add tests under `tests/e2e/`, and run `npm run test:e2e`. The CI build uses non-production Kinde placeholder values when repository secrets are absent.
-
-## Keeping documentation current
-
-Shared domain helpers in `src/domain/identifier-utils.ts`, `market-date-utils.ts`, and `price-utils.ts` contain identifier, market-date, and provider-price rules used across views and server paths. The live-market stream lifecycle lives in `src/components/investments/use-live-market-stream.ts`. Server authentication and database access live under `src/server/auth` and `src/server/db`; FYERS request and rate-limit coordination live under `src/server/fyers`. Portfolio-scoped queries, provider-specific parsing, and refresh policies remain with their respective features.
-
-Portfolio reads are orchestrated in `src/server/portfolio/ledger.ts`; the named, user-scoped SQL queries live in `src/server/portfolio/queries.ts`. Shared page size, page normalization, and page-count rules live in `src/domain/pagination.ts` and are used by both the server and the page controls. Other server workflows use focused query modules alongside their market-data and portfolio services; simple portfolio identity and rate-limit functions keep their own SQL. The dashboard ledger cache remains user-specific; portfolio, transaction, and detail reads remain direct.
-
-Shared table presentation primitives live in `src/components/ui/table.tsx`. `TableScroll` supplies a named keyboard-focusable scroll region; `TableHeader` covers static column headings. Views retain their own rows, sorting, data fetching, and financial calculations, and can compose custom headings when needed.
-
-When changing a feature, setup, behavior, architecture, or development workflow, update the relevant documentation in the same change. Record reproducible gotchas and limitations without secrets. Use `AGENTS.md` for contributor guidance, this README for current setup and implemented behavior, and `docs/technical-specification.md` / `tasks/` for architecture and delivery status. The pull request template prompts this review; it does not automatically determine whether documentation is accurate.
-
-Live Market shows a notice when the stream is reconnecting or unavailable. On Vercel production (`VERCEL_ENV=production`), the server rotates each stream after at most 270 seconds (including setup) to leave time before Vercel Hobby's 300-second function deadline, and the browser retries failures with backoff. Local development and preview deployments do not automatically rotate or retry failed connections; reopening Live Market starts a new connection. Returning to a visible tab can resume the stream in any environment. All environments fall back to dated quotes on disconnect. Vercel must expose its system environment variables for production detection; if disabled, rotation and retry stay off. Vercel request cancellation is enabled for the stream route. Verify the production connection and rotation during market hours after deployment; process-local stream sharing does not coordinate separate instances.
-
-## FYERS quote proof of concept
-
-The Settings screen provides the individual FYERS connection flow for the configured owner. The portfolio uses this connection to refresh batched quotes and selected historical closes. The FYERS app must have Market Data permission. Configure these server-only values in `.env.local`:
-
-- `FYERS_APP_ID` and `FYERS_SECRET_ID`: the individual FYERS app credentials.
-- `FYERS_REDIRECT_URI`: the exact redirect URI registered with FYERS, for example `http://localhost:3000/api/fyers/callback` for local use, if FYERS accepts it.
-- `FYERS_OWNER_KINDE_ID`: the Kinde user ID of the app owner, available in the Kinde user administration screen. Only this user can connect and view the quote.
-- `FYERS_SESSION_SECRET`: a unique random secret of at least 32 characters, used to encrypt the short-lived browser session cookie. Generate it locally with `openssl rand -hex 32` and keep it private.
-
-Restart the development server after changing environment values. Sign in as the configured owner and select **Connect FYERS** in Settings; complete FYERS login and consent there. FYERS tokens expire daily at 6:30 a.m.; reconnect when the quote becomes unavailable. FYERS access is separate from the portfolio ledger. The cookie is encrypted, HTTP-only and bound to the Kinde user; the token is not stored in the database. Parsed quotes and selected historical closes are stored in the user’s Neon portfolio cache. This initial setup is intended for a personal deployment; confirm provider rights and use a production HTTPS redirect before deployment. Never commit credentials or tokens.
-
-## Neon database foundation
-
-Set `DATABASE_URL` to a Neon Postgres connection string in `.env.local` and use separate development, preview, and production databases or branches. Keep connection strings private and configure them in the hosting environment as server-only variables. The server uses `@neondatabase/serverless`; no database credentials are sent to the browser.
-
-The first versioned SQL migration creates one `portfolios` row per Kinde subject, with unique ownership. On a new, intended database, run `npm run db:migrate:001` once. This is an explicit schema change: check the target database first, back up existing data as appropriate, and do not run it during application startup or builds. The migration deliberately fails if the table already exists; inspect the existing schema before making changes. Migration 001 predates the migration ledger; later migrations record their versions in `schema_migrations`.
-
-After migration 001, a signed-in user can create a portfolio identity on the dashboard. Later migrations add instruments, transactions and the market-data cache described below. A missing connection or migration is shown as unavailable. User-specific reads and creation derive the owner from the authenticated Kinde session. This application-level ownership check is not database row-level security; use restricted database credentials and add further isolation controls before broad multi-user use.
-
-Migration 002 adds portfolio-owned instruments, transactions, observations, six-period baselines and sale allocations. Run `npm run db:migrate:002` against the intended database after migration 001; it uses a database advisory lock and records its version in `schema_migrations`. Migration 001 predates that ledger and is not automatically recorded. `npm run test:db-schema` tests ownership foreign keys and checks with temporary rows in an atomic database block; run it on an isolated development database. Investment entry and the FYERS market-data cache use these tables after the subsequent migrations.
-
-Migration 003 changes the market-data cache to at most six replaceable period baseline rows and one FYERS quote per portfolio and ticker. It does not delete existing observations or manual valuations. Run `npm run db:migrate:003` after migration 002; check the target database first. Daily FYERS series are not to be stored. After migration 004 the schema permits seven periods; the app refreshes five on demand (7, 30, 90, 6 months and 365 days), leaving any existing 15- and 60-day cache rows untouched; the database constraints alone do not call FYERS. Storage is budgeted at 1 GB; monitor total database use, including indexes and user data.
-
-
-Migration 004 adds the 15-day period; migration 005 installs the atomic trade function. Apply `npm run db:migrate:004` followed by `npm run db:migrate:005` on a database with migrations 001–003 already applied. `npm run test:db-ledger` runs temporary transactional tests; use an isolated development database. The trade function serializes per portfolio, validates ownership, rejects oversells, and allocates sales FIFO. The lot-specific sale form rejects a newer lot while an older lot remains open. Backdated inserts before a later sale require replay and are currently rejected. Edit/void, idempotency, charges and general CSV import are incomplete.
-
-## Interface styles
-
-The landing page and portfolio screens share a muted green palette, readable secondary text, and visible keyboard-focus states. Form fields and the portfolio sort selector use the same bordered control treatment; the sort menu supports keyboard navigation, visible focus and assistive-technology labels. Keep text contrast and mobile dialog actions in mind when extending these screens.
-
-A one-off purchase seed can contain exchange-traded funds alongside stocks; they appear in the Stocks tab until a dedicated ETF view exists. For imported purchases that did not provide brokerage or taxes, the transaction source note records that those charges are missing, and portfolio costs exclude them. This one-off seed does not implement the planned general CSV import workflow.
-
-Migration 006 adds a shared FYERS rate-limit record and whole-share guard for new stock trades. Apply it with `npm run db:migrate:006` after migration 005. The server batches at most 50 stale quotes, considers a cached quote stale after five minutes, and permits a shared request slot every two seconds with a 4,000-request daily cap; 429 responses pause requests for at least one minute. Only the configured owner’s FYERS session is used. Investment details use five periods. The UI displays the FYERS-reported quote date; this is not a guarantee of exchange trade time. Missing prices stay unavailable. See the daily-history cache description for dashboard history and its limitations.
+The integration suite starts a separate local Next.js fixture application on port 3100, renders the real landing and dashboard routes with two sample holdings and seven history points, and replaces authentication, portfolio data, provider and trade actions with local stubs. It does not use Kinde, a database or FYERS, and it must not reuse a running app server. These tests verify UI integration and mock action wiring, not real authentication, SQL, persistence, provider behavior or production deployment; use separate isolated integration/provider checks for those boundaries.

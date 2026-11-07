@@ -12,12 +12,15 @@ export async function GET(request: Request) {
   const userId = await owner();
   const jar = await cookies();
   const raw = jar.get("fyers_state")?.value;
+
   jar.delete("fyers_state");
+
   const saved = raw ? unseal(raw) : null;
   const url = new URL(request.url);
   const state = url.searchParams.get("state") || "";
   const code = url.searchParams.get("auth_code");
   const expected = saved?.state || "";
+
   if (
     !userId ||
     saved?.userId !== userId ||
@@ -36,8 +39,10 @@ export async function GET(request: Request) {
         },
       },
     );
+
   const appId = process.env.FYERS_APP_ID;
   const secret = process.env.FYERS_SECRET_ID;
+
   if (!appId || !secret)
     return new NextResponse("FYERS configuration is incomplete", {
       status: 503,
@@ -60,6 +65,7 @@ export async function GET(request: Request) {
       },
     );
     const result = await response.json();
+
     if (
       !response.ok ||
       result.s !== "ok" ||
@@ -71,6 +77,7 @@ export async function GET(request: Request) {
       seal({ token: result.access_token, userId }),
       86400,
     );
+
     return NextResponse.redirect(new URL("/dashboard", request.url), {
       headers: {
         "Cache-Control": "no-store",

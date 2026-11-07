@@ -12,6 +12,7 @@ if (!process.env.DATABASE_URL) {
       new URL("../db/migrations/005_record_trade.sql", import.meta.url),
       "utf8",
     );
+
     await sql.transaction([
       sql.query(migration),
       sql`INSERT INTO schema_migrations(version) VALUES ('005_record_trade') ON CONFLICT (version) DO NOTHING`,

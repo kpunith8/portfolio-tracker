@@ -30,5 +30,6 @@ test("market prices retain decimal precision and enforce provider bounds", () =>
 test("display dates keep the recorded calendar day in UTC", async () => {
   const { formatRecordedDate } =
     await import("../../src/domain/market-date-utils.ts");
+
   assert.equal(formatRecordedDate("2025-01-02"), "2 Jan 2025");
 });

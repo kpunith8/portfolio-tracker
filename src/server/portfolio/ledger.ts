@@ -23,20 +23,25 @@ import { marketDate } from "../../domain/market-data";
 export function currentMarketDay() {
   return marketDate(Math.floor(Date.now() / 1000));
 }
+
 export function ledgerCacheTag(user: string) {
   return `portfolio-ledger-${createHash("sha256").update(user).digest("hex")}`;
 }
+
 async function readTransactions(user: string) {
   const tag = ledgerCacheTag(user);
+
   return unstable_cache(
     async (ownerId: string) => {
       const sql = database();
+
       return listLedgerTransactions(sql, ownerId);
     },
     ["portfolio-transactions-v1", tag],
     { tags: [tag], revalidate: 60 },
   )(user);
 }
+
 export type PortfolioReadOptions = {
   view: "dashboard" | "portfolio" | "transactions";
   page: number;
@@ -86,6 +91,7 @@ export async function readPortfolio(options: PortfolioReadOptions) {
   let history: Array<
     ReturnType<typeof dailyPortfolioHistory>[number] & { alternate: boolean }
   > = [];
+
   if (options.view === "dashboard") {
     const all = dashboardTransactions ?? [];
     const positions = new Map<
@@ -93,31 +99,38 @@ export async function readPortfolio(options: PortfolioReadOptions) {
       { quantity: Decimal; cost: Decimal; latest: string }
     >();
     const latestTrades = new Map<string, string>();
+
     for (const t of all) {
       if (!latestTrades.has(t.instrument_id))
         latestTrades.set(t.instrument_id, t.transaction_date);
       if (t.type !== "BUY") continue;
+
       const lot = remainingLot(
         t as unknown as Parameters<typeof remainingLot>[0],
       );
+
       if (lot.remaining.lte(0)) continue;
+
       const current = positions.get(t.instrument_id) ?? {
         quantity: new Decimal(0),
         cost: new Decimal(0),
         latest: "",
       };
+
       current.quantity = current.quantity.plus(lot.remaining);
       current.cost = current.cost.plus(lot.cost);
       if (t.transaction_date > current.latest)
         current.latest = t.transaction_date;
       positions.set(t.instrument_id, current);
     }
+
     summaries = [...positions].map(([id, p]) => ({
       id,
       quantity: p.quantity.toString(),
       cost: p.cost.toString(),
       latest: latestTrades.get(id) ?? p.latest,
     }));
+
     const liveQuotes = instruments.flatMap((instrument) =>
       instrument.price && instrument.market_date === options.asOf
         ? [
@@ -138,6 +151,7 @@ export async function readPortfolio(options: PortfolioReadOptions) {
         )
         .map((price) => price.market_date as string),
     );
+
     history = dailyPortfolioHistory(
       all as unknown as Parameters<typeof dailyPortfolioHistory>[0],
       [...dailyPrices, ...liveQuotes] as unknown as Parameters<
@@ -152,10 +166,12 @@ export async function readPortfolio(options: PortfolioReadOptions) {
       options.sort,
       offset,
     );
+
     total = Number(counts[0]?.total ?? 0);
     transactions = rows;
   } else if (!details || validDetail) {
     let ids: string[] = validDetail ? [options.detailId!] : [];
+
     if (!details) {
       const rows = await listHoldingIds(
         sql,
@@ -164,12 +180,15 @@ export async function readPortfolio(options: PortfolioReadOptions) {
         options.liveMarket,
         offset,
       );
+
       total = Number(rows[0]?.total ?? 0);
       ids = rows[0]?.ids ?? [];
     }
+
     if (ids.length)
       transactions = await listInstrumentTransactions(sql, user, ids);
   }
+
   if (
     options.view !== "dashboard" &&
     !details &&
@@ -181,6 +200,7 @@ export async function readPortfolio(options: PortfolioReadOptions) {
       page: portfolioPageCount(total),
     });
   }
+
   return {
     instruments,
     transactions,

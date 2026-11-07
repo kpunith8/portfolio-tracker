@@ -6,4 +6,5 @@ const config: NextConfig = {
     "/api/fyers/stream": ["./node_modules/fyers-api-v3/**/*"],
   },
 };
+
 export default config;

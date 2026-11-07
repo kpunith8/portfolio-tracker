@@ -15,6 +15,7 @@ if (!process.env.DATABASE_URL) {
       new URL("../db/migrations/001_create_portfolios.sql", import.meta.url),
       "utf8",
     );
+
     await sql.query(migration);
     console.log("Migration 001 applied: portfolios table created.");
   } catch {

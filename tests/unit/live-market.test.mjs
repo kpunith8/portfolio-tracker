@@ -7,6 +7,7 @@ test("totals use all holdings and decimal arithmetic", () => {
     { cost: "0.10", value: "0.30" },
     { cost: "0.20", value: "0.40" },
   ]);
+
   assert.equal(totals.invested.toFixed(2), "0.30");
   assert.equal(totals.current.toFixed(2), "0.70");
   assert.equal(totals.profit.toFixed(2), "0.40");
@@ -16,6 +17,7 @@ test("missing prices leave aggregate value and profit unavailable", () => {
     { cost: "100", value: "120" },
     { cost: "50", value: null },
   ]);
+
   assert.equal(totals.invested.toFixed(), "150");
   assert.equal(totals.current, null);
   assert.equal(totals.profit, null);
@@ -24,6 +26,7 @@ test("missing prices leave aggregate value and profit unavailable", () => {
 test("validates live quote data and computes daily movement", async () => {
   const { parseMarketTick, dailyMovement } =
     await import("../../src/domain/live-market.ts");
+
   assert.equal(
     parseMarketTick(
       {
@@ -44,7 +47,9 @@ test("validates live quote data and computes daily movement", async () => {
     ),
     null,
   );
+
   const day = dailyMovement("4", "125", "100");
+
   assert.equal(day.amount.toFixed(), "100");
   assert.equal(day.percent.toFixed(), "25");
   assert.equal(dailyMovement("4", "125", null), null);
@@ -59,6 +64,7 @@ test("keeps newer market data and retains the previous close only within its mar
     marketDate: "2026-11-04",
     tradedAt: 1000,
   };
+
   assert.deepEqual(
     mergeMarketTick(previous, { ...previous, price: "99", tradedAt: 999 }),
     previous,
@@ -91,6 +97,7 @@ test("sorts by 1D percentage rather than stock price, with unavailable values la
     { name: "low price", percent: dailyMovement("1", "100", "80").percent },
     { name: "missing", percent: null },
   ];
+
   assert.deepEqual(
     [...rows]
       .sort((a, b) => compareMarketPercent(a.percent, b.percent, false))
@@ -114,6 +121,7 @@ test("sorts returns by percentage instead of profit amount and keeps zero cost u
     { name: "zero cost", percent: returnPercent("100", "0") },
     { name: "unpriced", percent: returnPercent(null, "100") },
   ];
+
   assert.deepEqual(
     [...rows]
       .sort((a, b) => compareMarketPercent(a.percent, b.percent, false))

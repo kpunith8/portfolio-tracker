@@ -21,29 +21,41 @@ type Point = {
   value: string | null;
   alternate: boolean;
 };
+
 const ranges = ["7D", "30D", "3M", "6M", "1Y", "All"] as const;
+
 type Range = (typeof ranges)[number];
+
 const money = (value: string) => {
   const [integer, fraction] = new Decimal(value).toFixed(2).split(".");
+
   return `₹${integer.replace(/\B(?=(\d{2})+(\d)(?!\d))/g, ",")}.${fraction}`;
 };
+
 function startFor(range: Range, asOf: string, first: string) {
   if (range === "All") return first;
+
   const date = new Date(`${asOf}T00:00:00Z`);
+
   if (range === "7D" || range === "30D")
     date.setUTCDate(date.getUTCDate() - (range === "7D" ? 7 : 30));
   else {
     const months = range === "3M" ? 3 : range === "6M" ? 6 : 12;
     const day = date.getUTCDate();
+
     date.setUTCDate(1);
     date.setUTCMonth(date.getUTCMonth() - months);
+
     const last = new Date(
       Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0),
     ).getUTCDate();
+
     date.setUTCDate(Math.min(day, last));
   }
+
   return date.toISOString().slice(0, 10);
 }
+
 export function PortfolioHistoryChart({
   history,
   asOf,
@@ -56,34 +68,45 @@ export function PortfolioHistoryChart({
   const [updated, setUpdated] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const router = useRouter();
+
   useEffect(() => {
     let cancelled = false;
+
     async function sync() {
       const end = Date.now() + 5 * 60 * 1000;
+
       while (!cancelled && Date.now() < end) {
         const result = await refreshDailyHistory();
+
         if (cancelled) return;
         if (result === "updated") {
           setUpdated(true);
           setStatus("loading");
         } else if (result === "complete" || result === "partial") {
           setStatus(result);
+
           return;
         } else if (result === "reconnect" || result === "unavailable") {
           setStatus(result);
+
           return;
         }
+
         await new Promise((resolve) => setTimeout(resolve, 2500));
       }
+
       if (!cancelled) setStatus("paused");
     }
+
     void sync().catch(() => {
       if (!cancelled) setStatus("unavailable");
     });
+
     return () => {
       cancelled = true;
     };
   }, [attempt]);
+
   const data = useMemo(() => {
     const first = history[0]?.date ?? asOf;
     const requested = startFor(range, asOf, first);
@@ -91,6 +114,7 @@ export function PortfolioHistoryChart({
     const visible = history.filter(
       (point) => point.date >= from && point.date <= asOf,
     );
+
     return visible.map((point) => ({
       ...point,
       timestamp: Date.parse(`${point.date}T00:00:00Z`),
@@ -103,6 +127,7 @@ export function PortfolioHistoryChart({
       point.plot !== null &&
       Number.isFinite(point.plot),
   );
+
   return (
     <section
       className="real-panel portfolio-history-panel"
@@ -182,6 +207,7 @@ export function PortfolioHistoryChart({
                     const date = labelDate(
                       new Date(v).toISOString().slice(0, 10),
                     );
+
                     return range === "All"
                       ? date.replace(/^\d+ /, "")
                       : date.replace(/ \d{4}$/, "");
@@ -199,6 +225,7 @@ export function PortfolioHistoryChart({
                       maximum * 0.005,
                       1,
                     );
+
                     return [Math.max(0, minimum - padding), maximum + padding];
                   }}
                   tickFormatter={(v: number) =>
@@ -212,6 +239,7 @@ export function PortfolioHistoryChart({
                   content={({ active, payload }) => {
                     const p = payload?.[0]?.payload as
                       (typeof data)[number] | undefined;
+
                     return active &&
                       p?.value !== null &&
                       p?.value !== undefined ? (

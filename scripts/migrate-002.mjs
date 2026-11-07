@@ -15,6 +15,7 @@ if (!process.env.DATABASE_URL) {
       new URL("../db/migrations/002_portfolio_data.sql", import.meta.url),
       "utf8",
     );
+
     await sql.query(migration);
     console.log("Migration 002 is applied.");
   } catch {

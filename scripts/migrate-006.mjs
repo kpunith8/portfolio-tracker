@@ -15,6 +15,7 @@ if (!process.env.DATABASE_URL) {
       new URL("../db/migrations/006_market_guardrails.sql", import.meta.url),
       "utf8",
     );
+
     await sql.query(migration);
     console.log("Migration 006 is applied.");
   } catch {

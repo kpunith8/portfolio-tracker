@@ -23,6 +23,7 @@ test("XIRR includes dated buys, sale proceeds and terminal valuation", () => {
     { date: "2026-01-01", amount: "800" },
   ];
   const result = xirr(flows);
+
   assert.ok(result && result.gt(11) && result.lt(12));
   assert.equal(
     xirr([
@@ -40,6 +41,7 @@ test("historical quantity includes only trades through the close date", () => {
     { type: "SELL", transaction_date: "2025-01-05", quantity: "3" },
     { type: "BUY", transaction_date: "2026-01-01", quantity: "2" },
   ];
+
   assert.equal(quantityAt(trades, "2025-01-04")?.toFixed(), "10");
   assert.equal(quantityAt(trades, "2025-01-05")?.toFixed(), "7");
   assert.equal(

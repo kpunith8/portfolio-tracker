@@ -13,6 +13,7 @@ if (!process.env.DATABASE_URL) {
       new URL("../tests/db/delete_purchase.sql", import.meta.url),
       "utf8",
     );
+
     await sql.query(test);
     console.log("Purchase deletion checks passed; test fixtures removed.");
   } catch {

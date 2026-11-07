@@ -13,6 +13,7 @@ if (!process.env.DATABASE_URL) {
       new URL("../tests/db/trade_ledger.sql", import.meta.url),
       "utf8",
     );
+
     await sql.query(test);
     console.log("Trade ledger checks passed; test fixtures removed.");
   } catch {
