@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { Trash2 } from "lucide-react";
+import { ManualAssetEntry } from "./manual-asset-entry";
 import { displayCompanyName } from "../../domain/company-name";
 import { marketDate } from "../../domain/market-date-utils";
 import { useRouter } from "next/navigation";
@@ -133,10 +134,16 @@ function SymbolSearch({
 export function PurchaseEntry({
   close,
   onPendingChange,
+  initialType = "STOCK",
 }: {
+  initialType?: "STOCK" | "MUTUAL_FUND" | "DEBT_OTHER";
   close: () => void;
   onPendingChange: (pending: boolean) => void;
 }) {
+  const [manualPending, setManualPending] = useState(false);
+  const [assetType, setAssetType] = useState<
+    "STOCK" | "MUTUAL_FUND" | "DEBT_OTHER"
+  >(initialType);
   const [tab, setTab] = useState<"manual" | "csv">("manual");
   const [latestDate, setLatestDate] = useState(() =>
     marketDate(Date.now() / 1000),
@@ -274,258 +281,323 @@ export function PurchaseEntry({
   };
 
   return (
-    <fieldset className="purchase-entry-fieldset" disabled={pending}>
-      <div
-        className="purchase-tabs"
-        role="tablist"
-        aria-label="Purchase entry method"
+    <>
+      <fieldset
+        className="purchase-entry-fieldset"
+        disabled={pending || manualPending}
       >
-        <button
-          role="tab"
-          aria-selected={tab === "manual"}
-          onClick={() => {
-            setTab("manual");
-            setError("");
-          }}
-        >
-          Manual entry
-        </button>
-        <button
-          role="tab"
-          aria-selected={tab === "csv"}
-          onClick={() => {
-            setTab("csv");
-            setError("");
-          }}
-        >
-          Import .csv
-        </button>
-      </div>
-      {tab === "manual" ? (
-        <form
-          className="trade-form"
-          onSubmit={(e) => {
-            e.preventDefault();
-            void save([manual], "MANUAL");
-          }}
-        >
-          <label>
-            Stock
-            <SymbolSearch
-              label="Stock ticker or company"
-              value={manual.symbol}
-              onChange={selectManual}
-            />
-            <small>
-              Choose the ticker symbol from your broker, not the company name.{" "}
-              {manual.fyersSymbol && `Selected: ${manual.fyersSymbol}`}
-            </small>
-          </label>
+        <legend className="sr-only">Investment type</legend>
+        <div className="asset-type-options">
           {(
             [
-              ["quantity", "Quantity", "numeric"],
-              ["price", "Purchase price per share", "decimal"],
-              ["date", "Purchase date", "text"],
+              ["STOCK", "Stock"],
+              ["MUTUAL_FUND", "Mutual fund"],
+              ["DEBT_OTHER", "Debt & other"],
             ] as const
-          ).map(([key, label, mode]) => (
-            <label key={key}>
-              {label}
+          ).map(([value, label]) => (
+            <label key={value}>
               <input
-                required
-                type={key === "date" ? "date" : "text"}
-                max={key === "date" ? latestDate : undefined}
-                onFocus={
-                  key === "date"
-                    ? () => setLatestDate(marketDate(Date.now() / 1000))
-                    : undefined
-                }
-                inputMode={mode}
-                value={manual[key]}
-                onChange={(e) => {
-                  requestIds.current.MANUAL = null;
-                  setManual({ ...manual, [key]: e.target.value });
-                }}
-              />
+                type="radio"
+                name="asset-type"
+                value={value}
+                checked={assetType === value}
+                onChange={() => setAssetType(value)}
+              />{" "}
+              {label}
             </label>
           ))}
-          <p className="trade-note">
-            Brokerage, charges and taxes are not captured yet. Do not use these
-            figures for tax filing.
-          </p>
-          {error && (
-            <p className="trade-error" role="alert">
-              {error}
-            </p>
-          )}
-          <div className="trade-buttons">
-            <button type="button" onClick={close}>
-              Cancel
+        </div>
+      </fieldset>
+      {assetType !== "STOCK" ? (
+        <ManualAssetEntry
+          key={assetType}
+          type={assetType}
+          close={close}
+          onPendingChange={(value) => {
+            setManualPending(value);
+            onPendingChange(value);
+          }}
+        />
+      ) : (
+        <fieldset className="purchase-entry-fieldset" disabled={pending}>
+          <div
+            className="purchase-tabs"
+            role="tablist"
+            aria-label="Purchase entry method"
+          >
+            <button
+              role="tab"
+              aria-selected={tab === "manual"}
+              onClick={() => {
+                setTab("manual");
+                setError("");
+              }}
+            >
+              Manual entry
             </button>
-            <button type="submit" disabled={pending || !manual.fyersSymbol}>
-              {pending ? "Saving…" : "Save purchase"}
+            <button
+              role="tab"
+              aria-selected={tab === "csv"}
+              onClick={() => {
+                setTab("csv");
+                setError("");
+              }}
+            >
+              Import .csv
             </button>
           </div>
-        </form>
-      ) : (
-        <div className="trade-form">
-          <p className="trade-note">
-            Use the ticker symbol from your broker, not the company name. Enter
-            NSE or BSE as the exchange; use YYYY-MM-DD for dates. Brokerage and
-            taxes are not captured.
-          </p>
-          <a
-            download="purchase-template.csv"
-            href={`data:text/csv;charset=utf-8,${encodeURIComponent(purchaseCsvTemplate)}`}
-          >
-            Download CSV template
-          </a>
-          <label>
-            Choose CSV file
-            <input
-              type="file"
-              accept=".csv,text/csv"
-              onChange={(e) => {
-                void readFile(e.target.files?.[0]);
-                e.target.value = "";
+          {tab === "manual" ? (
+            <form
+              className="trade-form"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void save([manual], "MANUAL");
               }}
-            />
-          </label>
-          {duplicateCount > 0 && (
-            <p className="trade-error" role="status">
-              {duplicateCount} possible duplicate{" "}
-              {duplicateCount === 1 ? "row" : "rows"}. Review before saving.
-            </p>
-          )}
-          {rows.length > 0 && (
-            <>
-              <div className="purchase-table-scroll">
-                <table className="purchase-table">
-                  <thead>
-                    <tr>
-                      <th>Ticker</th>
-                      <th>Exchange</th>
-                      <th>Quantity</th>
-                      <th>Price</th>
-                      <th>Date</th>
-                      <th>
-                        <span className="sr-only">Remove</span>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows
-                      .slice(
-                        page * PREVIEW_PAGE_SIZE,
-                        page * PREVIEW_PAGE_SIZE + PREVIEW_PAGE_SIZE,
-                      )
-                      .map((row, index) => (
-                        <tr key={row.id}>
-                          <td>
-                            <SymbolSearch
-                              label={`Ticker for row ${page * PREVIEW_PAGE_SIZE + index + 1}`}
-                              value={row.symbol}
-                              invalid={!row.fyersSymbol}
-                              onChange={(text, selected) =>
-                                edit(row.id, {
-                                  symbol: text,
-                                  exchange: selected?.exchange || row.exchange,
-                                  fyersSymbol: selected?.fyersSymbol || "",
-                                })
-                              }
-                            />
-                          </td>
-                          <td>{row.exchange || "—"}</td>
-                          {(["quantity", "price", "date"] as const).map(
-                            (key) => (
-                              <td key={key}>
-                                <input
-                                  aria-label={`${key} for row ${page * PREVIEW_PAGE_SIZE + index + 1}`}
-                                  type={key === "date" ? "date" : "text"}
-                                  max={key === "date" ? latestDate : undefined}
-                                  onFocus={
-                                    key === "date"
-                                      ? () =>
-                                          setLatestDate(
-                                            marketDate(Date.now() / 1000),
-                                          )
-                                      : undefined
-                                  }
-                                  value={row[key]}
-                                  onChange={(e) =>
-                                    edit(row.id, { [key]: e.target.value })
+            >
+              <label>
+                Stock
+                <SymbolSearch
+                  label="Stock ticker or company"
+                  value={manual.symbol}
+                  onChange={selectManual}
+                />
+                <small>
+                  Choose the ticker symbol from your broker, not the company
+                  name.{" "}
+                  {manual.fyersSymbol && `Selected: ${manual.fyersSymbol}`}
+                </small>
+              </label>
+              {(
+                [
+                  ["quantity", "Quantity", "numeric"],
+                  ["price", "Purchase price per share", "decimal"],
+                  ["date", "Purchase date", "text"],
+                ] as const
+              ).map(([key, label, mode]) => (
+                <label key={key}>
+                  {label}
+                  <input
+                    required
+                    type={key === "date" ? "date" : "text"}
+                    max={key === "date" ? latestDate : undefined}
+                    onFocus={
+                      key === "date"
+                        ? () => setLatestDate(marketDate(Date.now() / 1000))
+                        : undefined
+                    }
+                    inputMode={mode}
+                    value={manual[key]}
+                    onChange={(e) => {
+                      requestIds.current.MANUAL = null;
+                      setManual({ ...manual, [key]: e.target.value });
+                    }}
+                  />
+                </label>
+              ))}
+              <p className="trade-note">
+                Brokerage, charges and taxes are not captured yet. Do not use
+                these figures for tax filing.
+              </p>
+              {error && (
+                <p className="trade-error" role="alert">
+                  {error}
+                </p>
+              )}
+              <div className="trade-buttons">
+                <button type="button" onClick={close}>
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={
+                    pending ||
+                    !manual.fyersSymbol ||
+                    !manual.quantity ||
+                    !manual.price ||
+                    !manual.date
+                  }
+                >
+                  {pending ? "Saving…" : "Save purchase"}
+                </button>
+              </div>
+            </form>
+          ) : (
+            <div className="trade-form">
+              <p className="trade-note">
+                Use the ticker symbol from your broker, not the company name.
+                Enter NSE or BSE as the exchange; use YYYY-MM-DD for dates.
+                Brokerage and taxes are not captured.
+              </p>
+              <a
+                download="purchase-template.csv"
+                href={`data:text/csv;charset=utf-8,${encodeURIComponent(purchaseCsvTemplate)}`}
+              >
+                Download CSV template
+              </a>
+              <label>
+                Choose CSV file
+                <input
+                  type="file"
+                  accept=".csv,text/csv"
+                  onChange={(e) => {
+                    void readFile(e.target.files?.[0]);
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+              {duplicateCount > 0 && (
+                <p className="trade-error" role="status">
+                  {duplicateCount} possible duplicate{" "}
+                  {duplicateCount === 1 ? "row" : "rows"}. Review before saving.
+                </p>
+              )}
+              {rows.length > 0 && (
+                <>
+                  <div className="purchase-table-scroll">
+                    <table className="purchase-table">
+                      <thead>
+                        <tr>
+                          <th>Ticker</th>
+                          <th>Exchange</th>
+                          <th>Quantity</th>
+                          <th>Price</th>
+                          <th>Date</th>
+                          <th>
+                            <span className="sr-only">Remove</span>
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rows
+                          .slice(
+                            page * PREVIEW_PAGE_SIZE,
+                            page * PREVIEW_PAGE_SIZE + PREVIEW_PAGE_SIZE,
+                          )
+                          .map((row, index) => (
+                            <tr key={row.id}>
+                              <td>
+                                <SymbolSearch
+                                  label={`Ticker for row ${page * PREVIEW_PAGE_SIZE + index + 1}`}
+                                  value={row.symbol}
+                                  invalid={!row.fyersSymbol}
+                                  onChange={(text, selected) =>
+                                    edit(row.id, {
+                                      symbol: text,
+                                      exchange:
+                                        selected?.exchange || row.exchange,
+                                      fyersSymbol: selected?.fyersSymbol || "",
+                                    })
                                   }
                                 />
                               </td>
-                            ),
-                          )}
-                          <td>
-                            <button
-                              type="button"
-                              aria-label={`Remove row ${page * PREVIEW_PAGE_SIZE + index + 1}`}
-                              onClick={() => {
-                                requestIds.current.CSV = null;
-                                setRows((previous) =>
-                                  previous.filter((r) => r.id !== row.id),
-                                );
-                                setPage((current) =>
-                                  Math.min(
-                                    current,
-                                    Math.max(
-                                      0,
-                                      Math.ceil(
-                                        (rows.length - 1) / PREVIEW_PAGE_SIZE,
-                                      ) - 1,
-                                    ),
-                                  ),
-                                );
-                              }}
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
-              </div>
-              <div className="purchase-pagination">
-                <span>
-                  {rows.length} purchases · Page {page + 1} of{" "}
-                  {Math.ceil(rows.length / PREVIEW_PAGE_SIZE)}
-                </span>
-                <button disabled={page === 0} onClick={() => setPage(page - 1)}>
-                  Previous
+                              <td>{row.exchange || "—"}</td>
+                              {(["quantity", "price", "date"] as const).map(
+                                (key) => (
+                                  <td key={key}>
+                                    <input
+                                      aria-label={`${key} for row ${page * PREVIEW_PAGE_SIZE + index + 1}`}
+                                      type={key === "date" ? "date" : "text"}
+                                      max={
+                                        key === "date" ? latestDate : undefined
+                                      }
+                                      onFocus={
+                                        key === "date"
+                                          ? () =>
+                                              setLatestDate(
+                                                marketDate(Date.now() / 1000),
+                                              )
+                                          : undefined
+                                      }
+                                      value={row[key]}
+                                      onChange={(e) =>
+                                        edit(row.id, { [key]: e.target.value })
+                                      }
+                                    />
+                                  </td>
+                                ),
+                              )}
+                              <td>
+                                <button
+                                  type="button"
+                                  aria-label={`Remove row ${page * PREVIEW_PAGE_SIZE + index + 1}`}
+                                  onClick={() => {
+                                    requestIds.current.CSV = null;
+                                    setRows((previous) =>
+                                      previous.filter((r) => r.id !== row.id),
+                                    );
+                                    setPage((current) =>
+                                      Math.min(
+                                        current,
+                                        Math.max(
+                                          0,
+                                          Math.ceil(
+                                            (rows.length - 1) /
+                                              PREVIEW_PAGE_SIZE,
+                                          ) - 1,
+                                        ),
+                                      ),
+                                    );
+                                  }}
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="purchase-pagination">
+                    <span>
+                      {rows.length} purchases · Page {page + 1} of{" "}
+                      {Math.ceil(rows.length / PREVIEW_PAGE_SIZE)}
+                    </span>
+                    <button
+                      disabled={page === 0}
+                      onClick={() => setPage(page - 1)}
+                    >
+                      Previous
+                    </button>
+                    <button
+                      disabled={(page + 1) * PREVIEW_PAGE_SIZE >= rows.length}
+                      onClick={() => setPage(page + 1)}
+                    >
+                      Next
+                    </button>
+                  </div>
+                </>
+              )}
+              {error && (
+                <p className="trade-error" role="alert">
+                  {error}
+                </p>
+              )}
+              <div className="trade-buttons">
+                <button type="button" onClick={close}>
+                  Cancel
                 </button>
                 <button
-                  disabled={(page + 1) * PREVIEW_PAGE_SIZE >= rows.length}
-                  onClick={() => setPage(page + 1)}
+                  type="submit"
+                  disabled={
+                    pending ||
+                    !rows.length ||
+                    rows.some(
+                      (row) =>
+                        !row.fyersSymbol ||
+                        !row.quantity.trim() ||
+                        !row.price.trim() ||
+                        !row.date,
+                    )
+                  }
+                  onClick={() => void save(rows, "CSV")}
                 >
-                  Next
+                  {pending ? "Working…" : `Add ${rows.length || ""} purchases`}
                 </button>
               </div>
-            </>
+            </div>
           )}
-          {error && (
-            <p className="trade-error" role="alert">
-              {error}
-            </p>
-          )}
-          <div className="trade-buttons">
-            <button type="button" onClick={close}>
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={
-                pending || !rows.length || rows.some((row) => !row.fyersSymbol)
-              }
-              onClick={() => void save(rows, "CSV")}
-            >
-              {pending ? "Working…" : `Add ${rows.length || ""} purchases`}
-            </button>
-          </div>
-        </div>
+        </fieldset>
       )}
-    </fieldset>
+    </>
   );
 }

@@ -11,8 +11,8 @@ const columns = ["symbol", "exchange", "quantity", "price", "date"] as const;
 export const purchaseCsvTemplate = `${columns.join(",")}\r\n`;
 
 /** Parse CSV records without coercing monetary values to floating point. */
-export function parsePurchaseCsv(csv: string): {
-  rows?: PurchaseCsvRow[];
+export function parseCsvRecords(csv: string): {
+  records?: string[][];
   error?: string;
 } {
   const records: string[][] = [];
@@ -54,6 +54,18 @@ export function parsePurchaseCsv(csv: string): {
   if (quoted) return { error: "Unclosed quoted field." };
   if (field || record.length || closed) records.push([...record, field]);
 
+  return { records };
+}
+
+export function parsePurchaseCsv(csv: string): {
+  rows?: PurchaseCsvRow[];
+  error?: string;
+} {
+  const parsed = parseCsvRecords(csv);
+
+  if (!parsed.records) return { error: parsed.error };
+
+  const records = parsed.records;
   const header = records.shift();
 
   if (

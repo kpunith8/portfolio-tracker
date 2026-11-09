@@ -38,8 +38,14 @@ Vercel production requests rotate before the function deadline and the client us
 ## Evolving the application
 
 - Purchase CSV import uses the downloaded template, resolves symbols against the shared FYERS catalog, and commits each batch atomically with an owner-scoped retry key and CSV provenance. A changed payload requires a new key; uncertain saves should be retried without editing. The catalog is refreshed manually and can be stale. The import currently accepts up to 1,000 rows, whole-share quantities, and no charges.
-- Edits/voids and sale replay, manual-valuation asset workflows, sold-lot reporting and tax reporting remain planned; consult the product plan before implementing them.
+- Edits/voids and sale replay, manual-asset sales and withdrawals, sold-lot reporting and tax reporting remain planned; consult the product plan before implementing them.
 - Import should validate a preview without writes, prevent duplicate submissions, and commit atomically while preserving provenance and ownership. Escape formula-triggering cells on export.
 - Financial-year and tax rules must be versioned and verified against current primary sources. FIFO for tax may require a demat-specific pool; unsupported classifications, STT, grandfathering and loss adjustments require review. Raw reporting-period totals are not final ITR entries.
 - For manual assets, use user-supplied dated valuations and compatible cash flows; do not estimate interest or claim current values without evidence.
 - Do not add broker synchronization, order execution, household aggregation or expanded provider sharing without an explicit requirement and appropriate authorization.
+
+## Manual mutual funds and debt
+
+- Owner-scoped manual instruments group purchases by asset type and case-insensitive name. Fund purchases retain fractional units, purchase NAV and optional expense ratio; new debt purchases use Sukanya Yojane, PPF or FD and retain invested amounts without units. Purchases with the same name appear together in an expandable row; existing other debt names remain visible. CSV purchase batches use the existing owner-scoped retry ledger and commit atomically.
+- User-entered NAVs are dated observations; fund values and XIRR require a NAV at least as recent as every purchase. Expense ratios are informational and are not subtracted from NAV-based returns. New dated debt interest credits reference their purchase; older group-level credits remain unallocated. Deletion voids eligible purchases and is rejected when linked or unallocated interest could be orphaned. Dated interest credits are retained separately; recorded debt balance sums entered principal and interest, without estimating a current balance. Debt XIRR treats recorded purchases as contributions and uses that balance on the latest recorded entry date as the terminal value.
+- Transactions filter stock, mutual fund and debt purchases and stock sales; debt interest credits remain in investment details; dashboard totals and history remain stock-only and disclose that limitation. Manual assets do not yet support withdrawals, sales or corrections; eligible debt purchases can be voided.
