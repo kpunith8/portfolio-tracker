@@ -15,6 +15,8 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { LiveViews } from "../../components/investments/live-views";
+import { readManualAssets } from "../../server/portfolio/manual-assets";
+import { subject } from "../../server/auth/subject";
 import { findOwnPortfolio } from "../../server/db/portfolio";
 import { currentMarketDay, readPortfolio } from "../../server/portfolio/ledger";
 import { createPortfolio } from "./actions";
@@ -36,6 +38,7 @@ export default async function Dashboard({
   searchParams: Promise<{
     view?: string;
     instrument?: string;
+    manual?: string;
     page?: string;
     sort?: string;
     tab?: string;
@@ -112,6 +115,8 @@ export default async function Dashboard({
           <DashboardContent
             view={view}
             instrument={params.instrument}
+            manual={params.manual}
+            tab={params.tab}
             liveMarket={params.tab === "live" && !params.instrument}
             page={page}
             sort={sort}
@@ -126,6 +131,8 @@ export default async function Dashboard({
 async function DashboardContent({
   view,
   instrument,
+  manual,
+  tab,
   liveMarket,
   page,
   sort,
@@ -133,6 +140,8 @@ async function DashboardContent({
 }: {
   view: string;
   instrument?: string;
+  manual?: string;
+  tab?: string;
   liveMarket: boolean;
   page: number;
   sort: "date" | "value";
@@ -143,6 +152,7 @@ async function DashboardContent({
   let exists = false;
   let available = true;
   let data: Awaited<ReturnType<typeof readPortfolio>> | null = null;
+  let manualData: Awaited<ReturnType<typeof readManualAssets>> | null = null;
   const marketStatus: MarketStatus = "cached";
 
   try {
@@ -156,6 +166,16 @@ async function DashboardContent({
         liveMarket: view === "portfolio" && liveMarket,
         asOf,
       });
+    if (
+      exists &&
+      (view === "portfolio" || view === "dashboard" || view === "transactions")
+    ) {
+      try {
+        manualData = await readManualAssets(await subject());
+      } catch {
+        manualData = null;
+      }
+    }
   } catch {
     available = false;
   }
@@ -189,13 +209,30 @@ async function DashboardContent({
               : "FYERS is available only to the configured account owner."}
           </p>
           {ownerId && (
-            <a className="text-link" href="/api/fyers/connect">
+            <a
+              className={`text-link ${connected ? "" : "fyers-connect-error"}`}
+              href="/api/fyers/connect"
+            >
               Connect FYERS
             </a>
           )}
         </section>
       ) : data ? (
         <LiveViews
+          key={`${view}:${manual || ""}:${tab || ""}`}
+          manualDetailId={manual}
+          initialAsset={
+            tab === "mutual"
+              ? "Mutual funds"
+              : tab === "debt"
+                ? "Debt & other"
+                : "Stocks"
+          }
+          manualData={
+            manualData as unknown as React.ComponentProps<
+              typeof LiveViews
+            >["manualData"]
+          }
           retryLiveStream={isProductionStream(process.env.VERCEL_ENV)}
           data={
             data as unknown as React.ComponentProps<typeof LiveViews>["data"]

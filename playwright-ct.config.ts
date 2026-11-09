@@ -20,6 +20,13 @@ export default defineConfig({
             ),
           },
           {
+            find: /.*\/app\/dashboard\/manual-asset-actions$/,
+            replacement: path.resolve(
+              __dirname,
+              "tests/components/mocks/manual-asset-actions.ts",
+            ),
+          },
+          {
             find: /.*\/app\/dashboard\/market-actions$/,
             replacement: path.resolve(
               __dirname,

@@ -40,6 +40,12 @@ import {
   X,
 } from "lucide-react";
 import { PurchaseEntry } from "./purchase-entry";
+import { ManualTransactions } from "./manual-transactions";
+import {
+  ManualAssets,
+  ManualAssetsUnavailable,
+  type ManualAssetData,
+} from "./manual-assets";
 import { deletePurchase, recordTrade } from "../../app/dashboard/trade-actions";
 
 Decimal.set({ precision: 64, rounding: Decimal.ROUND_HALF_UP });
@@ -339,7 +345,9 @@ function TradeModal({
   type,
   lot,
   close,
+  initialType,
 }: {
+  initialType: "STOCK" | "MUTUAL_FUND" | "DEBT_OTHER";
   instruments: Instrument[];
   type: "BUY" | "SELL";
   lot?: Transaction;
@@ -394,7 +402,11 @@ function TradeModal({
         </button>
       </div>
       {type === "BUY" ? (
-        <PurchaseEntry close={close} onPendingChange={setPurchasePending} />
+        <PurchaseEntry
+          initialType={initialType}
+          close={close}
+          onPendingChange={setPurchasePending}
+        />
       ) : (
         <form action={action} className="trade-form">
           <input type="hidden" name="type" value={type} />
@@ -493,7 +505,13 @@ export function LiveViews({
   asOf,
   initialSort,
   retryLiveStream,
+  manualData,
+  manualDetailId,
+  initialAsset,
 }: {
+  manualDetailId?: string;
+  initialAsset: "Stocks" | "Mutual funds" | "Debt & other";
+  manualData: ManualAssetData | null;
   data: Data;
   view: "portfolio" | "transactions" | "dashboard";
   detailId?: string;
@@ -541,7 +559,10 @@ export function LiveViews({
   const [marketTicks, setMarketTicks] = useState<Record<string, MarketTick>>(
     {},
   );
-  const [asset, setAsset] = useState("Stocks");
+  const [asset, setAsset] = useState<string>(initialAsset);
+  const [transactionAsset, setTransactionAsset] = useState<
+    "Stocks" | "Mutual funds" | "Debt & other"
+  >(initialAsset);
   const activeAsset = liveMarket ? "Live Market" : asset;
   const sort = initialSort;
   const page = data.page;
@@ -642,6 +663,36 @@ export function LiveViews({
     : undefined;
   const items = view === "transactions" ? orderedTransactions : sortedHoldings;
 
+  if (view === "portfolio" && manualDetailId) {
+    const selected = manualData?.assets.find(
+      (item) => item.id === manualDetailId,
+    );
+
+    return selected && manualData ? (
+      <div className="sample-page">
+        <ManualAssets
+          data={manualData}
+          type={selected.asset_type}
+          detailId={manualDetailId}
+        />
+      </div>
+    ) : (
+      <div className="sample-page">
+        <Link className="text-link" href="/dashboard?view=portfolio">
+          ← Back to portfolio
+        </Link>
+        <h1>
+          {manualData
+            ? "Investment not found"
+            : "Manual investments unavailable"}
+        </h1>
+        {!manualData && (
+          <p>Check the database connection and migration status.</p>
+        )}
+      </div>
+    );
+  }
+
   if (view === "portfolio" && detailId)
     return details ? (
       <InstrumentDetails
@@ -685,7 +736,7 @@ export function LiveViews({
           </h1>
           <p>
             {view === "transactions"
-              ? "Your recorded purchases and sales."
+              ? "Your recorded investment activity."
               : "Your investments, based on your recorded transactions."}
           </p>
         </div>
@@ -696,13 +747,31 @@ export function LiveViews({
           Record purchase
         </button>
       </header>
+      {view === "dashboard" && !manualData && (
+        <p className="ledger-notice">
+          Manual investments are unavailable. Check the database connection and
+          migration status.
+        </p>
+      )}
+      {view === "dashboard" && !!manualData?.assets.length && (
+        <p className="ledger-notice">
+          Dashboard totals and history currently cover stocks only. Mutual funds
+          and debt are available in Portfolio.
+        </p>
+      )}
       {data.chargesMissing && (
         <p className="ledger-notice">
           Some imported purchase costs exclude brokerage and taxes because those
           charges were not provided.
         </p>
       )}
-      <MarketNotice status={view === "transactions" ? "cached" : quoteStatus} />
+      {(view === "dashboard" ||
+        (view === "transactions" && transactionAsset === "Stocks") ||
+        (view === "portfolio" && (asset === "Stocks" || liveMarket))) && (
+        <MarketNotice
+          status={view === "transactions" ? "cached" : quoteStatus}
+        />
+      )}
       {view === "dashboard" ? (
         <DashboardOverview
           holdings={holdings}
@@ -720,10 +789,16 @@ export function LiveViews({
               </h2>
               <p>
                 {view === "transactions"
-                  ? "Sales remain in your history."
+                  ? transactionAsset === "Stocks"
+                    ? "Sales remain in your history."
+                    : transactionAsset === "Mutual funds"
+                      ? "Your recorded fund purchases."
+                      : "Your recorded purchases and interest credits."
                   : liveMarket
                     ? "Latest available FYERS prices for your holdings."
-                    : "Expand a stock to review purchases and record a sale."}
+                    : asset === "Stocks"
+                      ? "Expand a stock to review purchases and record a sale."
+                      : "Expand an investment to record a dated value."}
               </p>
               {view === "portfolio" &&
                 asset === "Stocks" &&
@@ -736,15 +811,43 @@ export function LiveViews({
                   </p>
                 )}
             </div>
-            {!liveMarket && (
-              <SortMenu
-                value={sort}
-                onChange={(value) => {
-                  navigateList(1, value);
-                }}
-              />
-            )}
+            {!liveMarket &&
+              ((view === "transactions" && transactionAsset === "Stocks") ||
+                (view === "portfolio" && asset === "Stocks")) && (
+                <SortMenu
+                  value={sort}
+                  onChange={(value) => {
+                    navigateList(1, value);
+                  }}
+                />
+              )}
           </div>
+          {view === "transactions" && (
+            <fieldset className="transaction-asset-filter">
+              <legend>Investment type</legend>
+              <div className="asset-type-options">
+                {(["Stocks", "Mutual funds", "Debt & other"] as const).map(
+                  (option) => (
+                    <label key={option}>
+                      <input
+                        type="radio"
+                        name="transaction-asset"
+                        value={option}
+                        checked={transactionAsset === option}
+                        onChange={() => {
+                          setTransactionAsset(option);
+                          router.push(
+                            `/dashboard?view=transactions${option === "Mutual funds" ? "&tab=mutual" : option === "Debt & other" ? "&tab=debt" : ""}`,
+                          );
+                        }}
+                      />{" "}
+                      {option}
+                    </label>
+                  ),
+                )}
+              </div>
+            </fieldset>
+          )}
           {view === "portfolio" && (
             <div className="sample-tabs">
               {["Stocks", "Live Market", "Mutual funds", "Debt & other"].map(
@@ -758,8 +861,9 @@ export function LiveViews({
                         router.push("/dashboard?view=portfolio&tab=live");
                       else {
                         setAsset(t);
-                        if (liveMarket)
-                          router.push("/dashboard?view=portfolio");
+                        router.push(
+                          `/dashboard?view=portfolio${t === "Mutual funds" ? "&tab=mutual" : t === "Debt & other" ? "&tab=debt" : ""}`,
+                        );
                       }
                     }}
                   >
@@ -769,7 +873,27 @@ export function LiveViews({
               )}
             </div>
           )}
-          {view === "portfolio" && liveMarket ? (
+          {view === "transactions" && transactionAsset !== "Stocks" ? (
+            manualData ? (
+              <ManualTransactions
+                key={transactionAsset}
+                data={manualData}
+                type={
+                  transactionAsset === "Mutual funds"
+                    ? "MUTUAL_FUND"
+                    : "DEBT_OTHER"
+                }
+              />
+            ) : (
+              <ManualAssetsUnavailable
+                type={
+                  transactionAsset === "Mutual funds"
+                    ? "MUTUAL_FUND"
+                    : "DEBT_OTHER"
+                }
+              />
+            )
+          ) : view === "portfolio" && liveMarket ? (
             <LiveMarket
               holdings={holdings}
               ticks={marketTicks}
@@ -777,10 +901,17 @@ export function LiveViews({
               retryLiveStream={retryLiveStream}
             />
           ) : view === "portfolio" && asset !== "Stocks" ? (
-            <div className="sample-empty">
-              <h2>{asset} coming later</h2>
-              <p>Stock investments are available now.</p>
-            </div>
+            manualData ? (
+              <ManualAssets
+                key={asset}
+                data={manualData}
+                type={asset === "Mutual funds" ? "MUTUAL_FUND" : "DEBT_OTHER"}
+              />
+            ) : (
+              <ManualAssetsUnavailable
+                type={asset === "Mutual funds" ? "MUTUAL_FUND" : "DEBT_OTHER"}
+              />
+            )
           ) : items.length === 0 ? (
             <div className="sample-empty">
               <h2>
@@ -987,25 +1118,28 @@ export function LiveViews({
               </table>
             </TableScroll>
           )}
-          {!liveMarket && data.total > PORTFOLIO_PAGE_SIZE && (
-            <nav className="page-controls" aria-label="Pagination">
-              <button
-                disabled={currentPage === 1}
-                onClick={() => navigateList(currentPage - 1, sort)}
-              >
-                Previous
-              </button>
-              <span>
-                Page {currentPage} of {portfolioPageCount(data.total)}
-              </span>
-              <button
-                disabled={currentPage * PORTFOLIO_PAGE_SIZE >= data.total}
-                onClick={() => navigateList(currentPage + 1, sort)}
-              >
-                Next
-              </button>
-            </nav>
-          )}
+          {!liveMarket &&
+            ((view === "transactions" && transactionAsset === "Stocks") ||
+              (view === "portfolio" && asset === "Stocks")) &&
+            data.total > PORTFOLIO_PAGE_SIZE && (
+              <nav className="page-controls" aria-label="Pagination">
+                <button
+                  disabled={currentPage === 1}
+                  onClick={() => navigateList(currentPage - 1, sort)}
+                >
+                  Previous
+                </button>
+                <span>
+                  Page {currentPage} of {portfolioPageCount(data.total)}
+                </span>
+                <button
+                  disabled={currentPage * PORTFOLIO_PAGE_SIZE >= data.total}
+                  onClick={() => navigateList(currentPage + 1, sort)}
+                >
+                  Next
+                </button>
+              </nav>
+            )}
         </section>
       )}
       {deleteLot && (
@@ -1015,6 +1149,21 @@ export function LiveViews({
         <TradeModal
           key={`${modal.type}-${modal.lot?.id || "new"}`}
           instruments={data.instruments}
+          initialType={
+            (view === "portfolio"
+              ? asset
+              : view === "transactions"
+                ? transactionAsset
+                : "Stocks") === "Mutual funds"
+              ? "MUTUAL_FUND"
+              : (view === "portfolio"
+                    ? asset
+                    : view === "transactions"
+                      ? transactionAsset
+                      : "Stocks") === "Debt & other"
+                ? "DEBT_OTHER"
+                : "STOCK"
+          }
           type={modal.type}
           lot={modal.lot}
           close={() => setModal(null)}
@@ -1356,7 +1505,10 @@ function MarketNotice({ status }: { status: MarketStatus }) {
   if (status === "current" || status === "cached") return null;
 
   return (
-    <div className="market-notice" role="status">
+    <div
+      className={`market-notice ${status === "reconnect" ? "market-notice-error" : ""}`}
+      role="status"
+    >
       {status === "reconnect" ? (
         <>
           Connect FYERS in <Link href="/dashboard?view=settings">Settings</Link>{" "}

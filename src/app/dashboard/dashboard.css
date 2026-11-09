@@ -2696,3 +2696,103 @@ td:nth-child(n + 3) {
   font-size: 13px;
   font-weight: 700;
 }
+
+.asset-type-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin: 0 0 1rem;
+}
+.asset-type-options label {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.manual-observation {
+  max-width: 28rem;
+  padding: 1rem 0;
+}
+.manual-details > .real-panel {
+  margin-top: 1.5rem;
+}
+
+.transaction-asset-filter {
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+.transaction-asset-filter legend {
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.transaction-asset-filter {
+  padding: 0 26px;
+}
+.market-notice-error {
+  color: #8c3030;
+  background: #fff3f2;
+  border-color: #edc3bf;
+}
+.market-notice-error a {
+  color: #a6322d;
+}
+
+.investment-select {
+  position: relative;
+  font-weight: 400;
+}
+.investment-select summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px solid var(--app-control-border);
+  border-radius: 8px;
+  background: white;
+  cursor: pointer;
+  list-style: none;
+}
+.investment-select summary::-webkit-details-marker {
+  display: none;
+}
+.investment-select-options {
+  position: absolute;
+  z-index: 3;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  padding: 5px;
+  background: white;
+  border: 1px solid var(--app-control-border);
+  border-radius: 8px;
+  box-shadow: 0 8px 20px #17281e1a;
+}
+.investment-select-options button {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--app-ink);
+  text-align: left;
+  padding: 9px 10px;
+  cursor: pointer;
+}
+.investment-select-options button:hover,
+.investment-select-options button:focus-visible,
+.investment-select-options button[aria-pressed="true"] {
+  background: #edf5ef;
+}
+.manual-name-label {
+  display: grid;
+  gap: 7px;
+  color: #263e30;
+  font-size: 14px;
+  font-weight: 700;
+}
+.fyers-connect-error {
+  color: #a6322d;
+}

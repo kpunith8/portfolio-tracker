@@ -8,6 +8,7 @@ The app tracks an individual's investments using user-owned transactions and FYE
 - Owner-only FYERS quotes, selected historical baselines, daily dashboard history and an on-demand Live Market stream, with dated fallback and incomplete-data disclosures.
 - Purchase-level CAGR and investment XIRR for supported inputs. Value charts reflect changing holdings, not cash-flow-adjusted returns.
 - Existing seeded ETFs appear under Stocks; missing brokerage and taxes on imported purchases are disclosed.
+- Manual mutual fund purchases, CSV import and dated NAVs, plus debt purchases and dated interest credits. Transactions can be filtered by asset type; dashboard totals remain stock-only.
 - Manual stock purchase entry and CSV review use a shared FYERS symbol catalog; CSV purchases are saved atomically with retry protection and CSV provenance.
 
 ## Remaining work
@@ -16,7 +17,7 @@ The app tracks an individual's investments using user-owned transactions and FYE
 
 - Add edits, voids, income and charges, duplicate-submission protection and atomic replay of subsequent sale allocations; reject corrections that create oversells.
 - Test FIFO across partial sales, multiple lots, backdated changes and concurrent requests; verify ownership isolation and calculation fixtures.
-- Add manual dated valuations and cash flows for mutual funds, gold, EPF, fixed deposits and other assets. Do not estimate interest or invent valuations; show stale and missing dates.
+- Extend manual asset workflows with withdrawals, sales, corrections and deletion, and add dated valuations for gold and other assets. Do not estimate interest or invent valuations; show stale and missing dates.
 - Expand investment details and supported performance calculations only when the required cash flows and valuation history exist; keep market movement, investment P/L and time-weighted returns distinct.
 
 ### Import and export

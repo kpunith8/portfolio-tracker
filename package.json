@@ -33,7 +33,9 @@
     "test:integration": "playwright test -c playwright.config.ts",
     "db:migrate:011": "node scripts/migrate-011.mjs",
     "db:import-fyers-symbols": "node scripts/import-fyers-symbols.mjs",
-    "db:migrate:012": "node scripts/migrate-012.mjs"
+    "db:migrate:012": "node scripts/migrate-012.mjs",
+    "db:migrate:013": "node scripts/migrate-013.mjs",
+    "db:migrate:014": "node scripts/migrate-014.mjs"
   },
   "keywords": [],
   "author": "",
