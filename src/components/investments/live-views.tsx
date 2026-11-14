@@ -40,6 +40,7 @@ import {
   X,
 } from "lucide-react";
 import { PurchaseEntry } from "./purchase-entry";
+import { NetWorthCards } from "./net-worth-cards";
 import { ManualTransactions } from "./manual-transactions";
 import {
   ManualAssets,
@@ -747,19 +748,7 @@ export function LiveViews({
           Record purchase
         </button>
       </header>
-      {view === "dashboard" && !manualData && (
-        <p className="ledger-notice">
-          Manual investments are unavailable. Check the database connection and
-          migration status.
-        </p>
-      )}
-      {view === "dashboard" && !!manualData?.assets.length && (
-        <p className="ledger-notice">
-          Dashboard totals and history currently cover stocks only. Mutual funds
-          and debt are available in Portfolio.
-        </p>
-      )}
-      {data.chargesMissing && (
+      {view !== "dashboard" && data.chargesMissing && (
         <p className="ledger-notice">
           Some imported purchase costs exclude brokerage and taxes because those
           charges were not provided.
@@ -775,6 +764,7 @@ export function LiveViews({
       {view === "dashboard" ? (
         <DashboardOverview
           holdings={holdings}
+          manualData={manualData}
           transactions={orderedTransactions}
           instruments={data.instruments}
           history={data.history}
@@ -1525,11 +1515,13 @@ function MarketNotice({ status }: { status: MarketStatus }) {
 
 function DashboardOverview({
   holdings,
+  manualData,
   transactions,
   instruments,
   history,
   asOf,
 }: {
+  manualData: ManualAssetData | null;
   holdings: Holding[];
   transactions: Transaction[];
   instruments: Instrument[];
@@ -1540,12 +1532,6 @@ function DashboardOverview({
   const missing = holdings.length - priced.length;
   const totalCost = holdings.reduce((sum, h) => sum.plus(h.cost), n("0"));
   const totalValue = priced.reduce((sum, h) => sum.plus(h.value!), n("0"));
-  const sharesValue = priced
-    .filter((h) => h.i.unit !== "unit")
-    .reduce((sum, h) => sum.plus(h.value!), n("0"));
-  const unitsValue = priced
-    .filter((h) => h.i.unit === "unit")
-    .reduce((sum, h) => sum.plus(h.value!), n("0"));
   const profit =
     missing === 0 && holdings.length ? totalValue.minus(totalCost) : null;
   const top = [...priced].sort((a, b) => b.value!.cmp(a.value!)).slice(0, 5);
@@ -1553,9 +1539,16 @@ function DashboardOverview({
 
   return (
     <>
+      <NetWorthCards
+        manual={manualData}
+        stocks={missing ? null : totalValue.toString()}
+        stockHistory={history}
+      />
       <section className="overview-metrics" aria-label="Portfolio summary">
         <div>
-          <span>{missing ? "Available value" : "Portfolio value"}</span>
+          <span>
+            {missing ? "Available stock value" : "Stock investment value"}
+          </span>
           <strong>{priced.length ? fmt(totalValue) : "Unavailable"}</strong>
           <small>
             {missing
@@ -1593,7 +1586,7 @@ function DashboardOverview({
         <section className="real-panel">
           <div className="panel-heading">
             <div>
-              <h2>Largest investments</h2>
+              <h2>Largest stock investments</h2>
               <p>By latest available value</p>
             </div>
             <Link href="/dashboard?view=portfolio" className="text-link">
@@ -1635,7 +1628,7 @@ function DashboardOverview({
           <div className="panel-heading">
             <div>
               <h2>Recent activity</h2>
-              <p>Your latest recorded transactions</p>
+              <p>Your latest recorded stock transactions</p>
             </div>
             <Link href="/dashboard?view=transactions" className="text-link">
               View all
@@ -1675,59 +1668,6 @@ function DashboardOverview({
           )}
         </section>
       </div>
-      <section className="real-panel allocation-summary">
-        <div className="panel-heading">
-          <div>
-            <h2>Portfolio composition</h2>
-            <p>Based on available prices</p>
-          </div>
-        </div>
-        {priced.length > 0 && !totalValue.isZero() ? (
-          <>
-            <div className="composition-bar" aria-hidden="true">
-              <span
-                style={{
-                  width: `${sharesValue.div(totalValue).mul(100).toFixed(2)}%`,
-                }}
-              />
-              <span
-                style={{
-                  width: `${unitsValue.div(totalValue).mul(100).toFixed(2)}%`,
-                }}
-              />
-            </div>
-            <div className="composition-legend">
-              <div>
-                <span>
-                  <i className="composition-dot shares" />
-                  Shares
-                </span>
-                <strong>{fmt(sharesValue)}</strong>
-                <small>
-                  {sharesValue.div(totalValue).mul(100).toFixed(1)}%
-                </small>
-              </div>
-              <div>
-                <span>
-                  <i className="composition-dot units" />
-                  ETFs
-                </span>
-                <strong>{fmt(unitsValue)}</strong>
-                <small>{unitsValue.div(totalValue).mul(100).toFixed(1)}%</small>
-              </div>
-            </div>
-            {missing > 0 && (
-              <p className="panel-note">
-                Investments without prices are excluded from this chart.
-              </p>
-            )}
-          </>
-        ) : (
-          <p className="panel-message">
-            Composition will appear when market prices are available.
-          </p>
-        )}
-      </section>
     </>
   );
 }

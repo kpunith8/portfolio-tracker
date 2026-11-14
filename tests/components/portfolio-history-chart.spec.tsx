@@ -14,9 +14,17 @@ test("renders dated history and changes range", async ({ mount, page }) => {
     </div>,
   );
   await expect(page.getByLabel("Portfolio value chart")).toBeVisible();
-  await page.getByRole("button", { name: "7D", exact: true }).click();
   await expect(
-    page.getByRole("button", { name: "7D", exact: true }),
+    page.getByRole("button", { name: "5D", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator(".recharts-area-dot")).toHaveCount(6);
+
+  const path = await page.locator(".recharts-area-curve").getAttribute("d");
+
+  expect(path).not.toContain("C");
+  await page.getByRole("button", { name: "1M", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "1M", exact: true }),
   ).toHaveAttribute("aria-pressed", "true");
 });
 
