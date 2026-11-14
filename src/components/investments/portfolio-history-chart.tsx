@@ -22,7 +22,7 @@ type Point = {
   alternate: boolean;
 };
 
-const ranges = ["7D", "30D", "3M", "6M", "1Y", "All"] as const;
+const ranges = ["1D", "5D", "1M", "3M", "6M", "1Y", "All"] as const;
 
 type Range = (typeof ranges)[number];
 
@@ -37,10 +37,11 @@ function startFor(range: Range, asOf: string, first: string) {
 
   const date = new Date(`${asOf}T00:00:00Z`);
 
-  if (range === "7D" || range === "30D")
-    date.setUTCDate(date.getUTCDate() - (range === "7D" ? 7 : 30));
+  if (range === "1D" || range === "5D")
+    date.setUTCDate(date.getUTCDate() - (range === "1D" ? 1 : 5));
   else {
-    const months = range === "3M" ? 3 : range === "6M" ? 6 : 12;
+    const months =
+      range === "1M" ? 1 : range === "3M" ? 3 : range === "6M" ? 6 : 12;
     const day = date.getUTCDate();
 
     date.setUTCDate(1);
@@ -63,7 +64,7 @@ export function PortfolioHistoryChart({
   history: Point[];
   asOf: string;
 }) {
-  const [range, setRange] = useState<Range>("1Y");
+  const [range, setRange] = useState<Range>("5D");
   const [status, setStatus] = useState("loading");
   const [updated, setUpdated] = useState(false);
   const [attempt, setAttempt] = useState(0);
@@ -135,7 +136,7 @@ export function PortfolioHistoryChart({
     >
       <div className="panel-heading history-heading">
         <div>
-          <h2>Portfolio value over time</h2>
+          <h2>Stock investment value over time</h2>
           <p>Value of recorded holdings at daily market close</p>
         </div>
         <div className="history-filters" aria-label="History date range">
@@ -258,14 +259,20 @@ export function PortfolioHistoryChart({
                   }}
                 />
                 <Area
-                  type="monotone"
+                  type={
+                    range === "1D" || range === "5D" ? "linear" : "monotone"
+                  }
                   dataKey="plot"
                   baseValue="dataMin"
                   stroke="#357756"
                   strokeWidth={2.5}
                   fill="#e9f3ec"
                   connectNulls={false}
-                  dot={false}
+                  dot={
+                    range === "1D" || range === "5D"
+                      ? { r: 3, fill: "#357756", strokeWidth: 0 }
+                      : false
+                  }
                   activeDot={{ r: 5 }}
                   isAnimationActive={false}
                 />
@@ -284,12 +291,14 @@ export function PortfolioHistoryChart({
         </div>
       )}
       <p className="history-footnote">
-        Daily closes use recorded quantities and FYERS historical prices.
-        Purchases and sales affect value; this is not investment return. FYERS
-        adjusts prices for corporate actions; recorded quantities and cached
-        prices may use a different basis. Missing NSE history may use BSE closes
-        matched by ISIN. Dates with no prices for any holding are not shown;
-        history may be incomplete. The vertical axis fits the selected range.
+        Short ranges show available daily values as points connected by straight
+        lines, not intraday prices. 1D and 5D use calendar days. Daily closes
+        use recorded quantities and FYERS historical prices. Purchases and sales
+        affect value; this is not investment return. FYERS adjusts prices for
+        corporate actions; recorded quantities and cached prices may use a
+        different basis. Missing NSE history may use BSE closes matched by ISIN.
+        Dates with no prices for any holding are not shown; history may be
+        incomplete. The vertical axis fits the selected range.
       </p>
     </section>
   );

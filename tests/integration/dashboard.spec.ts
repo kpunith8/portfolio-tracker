@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("dashboard renders fixture totals and seven-day history", async ({
+test("dashboard renders fixture totals and five-day history", async ({
   page,
 }) => {
   await page.goto("/dashboard");
@@ -9,9 +9,11 @@ test("dashboard renders fixture totals and seven-day history", async ({
   ).toBeVisible();
   await expect(page.getByLabel("Portfolio summary")).toContainText("₹2,300.00");
   await expect(
-    page.getByRole("heading", { name: "Portfolio value over time" }),
+    page.getByRole("heading", { name: "Stock investment value over time" }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "7D", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "5D", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByLabel("Portfolio value chart")).toBeVisible();
 });
 
