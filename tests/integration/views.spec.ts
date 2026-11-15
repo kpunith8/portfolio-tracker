@@ -141,8 +141,11 @@ test("live market applies streamed prices and previous closes", async ({
   await expect(page.getByLabel("Market summary")).toContainText("₹450.00");
 });
 
-test("tax report displays its planned-state page", async ({ page }) => {
+test("tax report displays the stock gains fixture", async ({ page }) => {
   await page.goto("/dashboard?view=tax");
-  await expect(page.getByRole("heading", { name: "Tax report" })).toBeVisible();
-  await expect(page.getByText("This section is coming soon.")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Tax Report" })).toBeVisible();
+  await expect(
+    page.locator('.tax-year[data-print-year="2026"]').getByText("Year total"),
+  ).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Dividends" })).toBeVisible();
 });

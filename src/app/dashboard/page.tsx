@@ -14,6 +14,8 @@ import {
 import Link from "next/link";
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
+import { TaxReport } from "../../components/investments/tax-report";
+import { readTaxReport } from "../../server/portfolio/tax-report";
 import { LiveViews } from "../../components/investments/live-views";
 import { readManualAssets } from "../../server/portfolio/manual-assets";
 import { subject } from "../../server/auth/subject";
@@ -28,7 +30,7 @@ const nav = [
   { name: "Dashboard", icon: LayoutDashboard, view: "dashboard" },
   { name: "Portfolio", icon: WalletCards, view: "portfolio" },
   { name: "Transactions", icon: ArrowDownLeft, view: "transactions" },
-  { name: "Tax report", icon: FileText, view: "tax" },
+  { name: "Tax Report", icon: FileText, view: "tax" },
   { name: "Settings", icon: Settings, view: "settings" },
 ];
 
@@ -153,10 +155,12 @@ async function DashboardContent({
   let available = true;
   let data: Awaited<ReturnType<typeof readPortfolio>> | null = null;
   let manualData: Awaited<ReturnType<typeof readManualAssets>> | null = null;
+  let taxData: Awaited<ReturnType<typeof readTaxReport>> | null = null;
   const marketStatus: MarketStatus = "cached";
 
   try {
     exists = !!(await findOwnPortfolio());
+    if (exists && view === "tax") taxData = await readTaxReport();
     if (exists && ["dashboard", "portfolio", "transactions"].includes(view))
       data = await readPortfolio({
         view: view as "dashboard" | "portfolio" | "transactions",
@@ -217,6 +221,8 @@ async function DashboardContent({
             </a>
           )}
         </section>
+      ) : view === "tax" && taxData ? (
+        <TaxReport {...taxData} />
       ) : data ? (
         <LiveViews
           key={`${view}:${manual || ""}:${tab || ""}`}

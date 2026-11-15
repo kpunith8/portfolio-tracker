@@ -15,7 +15,7 @@ test("mobile navigation fits and remains keyboard accessible", async ({
       "Dashboard",
       "Portfolio",
       "Transactions",
-      "Tax report",
+      "Tax Report",
       "Settings",
     ]) {
       await expect(

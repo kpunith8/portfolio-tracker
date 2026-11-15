@@ -22,3 +22,13 @@ This is a Next.js App Router, React and TypeScript personal portfolio tracker us
 - Review the whole repository for refactoring requests unless explicitly limited; tagged files are examples. Fix related duplication when safe and document broader opportunities outside the task.
 - Use focused server-only queries with parameterized SQL and user authorization.
 - Preserve cache identity and invalidation, provider rate coordination and transaction atomicity.
+
+## Interface conventions
+
+Before adding or changing UI, inspect the closest existing flow and reuse its components, styles and interaction patterns. Check desktop and mobile, keyboard and focus behavior, empty and error states, and the rendered result. Do not introduce a visually different version of an existing control just because the browser provides a default.
+
+- **Tables:** Start with `src/components/ui/table.tsx` and the table and scrolling styles in `src/app/dashboard/dashboard.css`; inspect the closest portfolio or transaction table for column alignment, spacing, numeric formatting and responsive overflow. Keep table headings semantic and scroll regions keyboard accessible. Use distinct styling only when the task calls for it.
+- **Expandable rows:** Follow the portfolio and tax report disclosure patterns: a keyboard-operable `details`/`summary`, a visible “View details” cue where appropriate, and a `lucide-react` chevron that reflects expansion. Preserve focus visibility and reduced-motion preferences; do not substitute plus/minus markers for the established cue.
+- **Dropdowns:** For a styled in-app choice menu, follow `investment-select` in `src/components/investments/manual-asset-entry.tsx` and its CSS instead of relying on the browser's unstyled option popup. Display the selected value, label the control, provide keyboard access and visible focus, mark the selected option, close on selection and Escape, restore focus, and handle long lists and dismissal. Reuse or extract a shared component when practical. Use native controls when platform behavior or accessibility makes them a better fit, with an explicit reason.
+- **Dialogs and buttons:** Reuse `trade-dialog`, `trade-buttons`, `trade-primary` and existing field patterns where applicable; match button size, spacing and primary/secondary hierarchy. Verify that menus are not clipped by the dialog.
+- **Print and export:** Design the output for the medium, preserve the data and disclosures, and verify the selected scope and page layout rather than printing expanded interactive controls.

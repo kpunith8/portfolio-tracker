@@ -29,7 +29,7 @@ test("portfolio sorts holdings and opens a purchase form", async ({ page }) => {
     .getByRole("menuitemradio", { name: "Current asset value" })
     .click();
   await expect(holdings.first()).toContainText("Alpha Ltd");
-  await page.getByRole("button", { name: "Record purchase" }).click();
+  await page.getByRole("button", { name: "Record Purchase" }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Save purchase" }),
@@ -48,7 +48,7 @@ test("empty portfolio offers a way to record a purchase", async ({ page }) => {
   await expect(
     page.getByRole("heading", { name: "No investments yet" }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Record purchase" }).click();
+  await page.getByRole("button", { name: "Record Purchase" }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await page.getByLabel("Stock ticker or company").fill("TEST");
   await page.getByRole("button", { name: /TEST · NSE/ }).click();
@@ -74,7 +74,7 @@ test("symbol search identifies BSE bonds and formats company names", async ({
   page,
 }) => {
   await page.goto("/dashboard?view=portfolio");
-  await page.getByRole("button", { name: "Record purchase" }).click();
+  await page.getByRole("button", { name: "Record Purchase" }).click();
   await page.getByLabel("Stock ticker or company").fill("BOND");
   await expect(
     page.getByRole("button", { name: "BOND · BSE F Example Bond Limited" }),
@@ -89,7 +89,7 @@ test("CSV preview repairs invalid symbols and limits visible rows", async ({
   page,
 }) => {
   await page.goto("/dashboard?view=portfolio");
-  await page.getByRole("button", { name: "Record purchase" }).click();
+  await page.getByRole("button", { name: "Record Purchase" }).click();
   await page.getByRole("tab", { name: "Import .csv" }).click();
 
   const csv =

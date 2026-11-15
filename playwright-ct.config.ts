@@ -27,6 +27,13 @@ export default defineConfig({
             ),
           },
           {
+            find: /.*\/app\/dashboard\/dividend-actions$/,
+            replacement: path.resolve(
+              __dirname,
+              "tests/components/mocks/dividend-actions.ts",
+            ),
+          },
+          {
             find: /.*\/app\/dashboard\/market-actions$/,
             replacement: path.resolve(
               __dirname,
