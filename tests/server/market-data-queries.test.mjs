@@ -111,3 +111,36 @@ test("baseline and trade operations bind the supplied user and input values", ()
     null,
   ]);
 });
+
+test("mutual fund purchase check is owner scoped and excludes voided entries", async () => {
+  const { findMutualFundPurchases } =
+    await import("../../src/server/portfolio/tax-queries.ts");
+  const query = findMutualFundPurchases(capture, "owner-1");
+
+  assert.deepEqual(query.values, ["owner-1"]);
+  assert.match(query.text, /p\.kinde_subject=\?/);
+  assert.match(query.text, /i\.portfolio_id=e\.portfolio_id/);
+  assert.match(query.text, /i\.asset_type='MUTUAL_FUND'/);
+  assert.match(query.text, /e\.voided_at IS NULL/);
+});
+
+test("dividend preview matches are scoped to the authenticated owner", async () => {
+  const { findDividendMatches } =
+    await import("../../src/server/portfolio/dividend-queries.ts");
+  const row = { isin: "INE123A01012", exDate: "2025-06-15" };
+  const query = findDividendMatches(capture, "owner-1", [row]);
+
+  assert.match(query.text, /p\.kinde_subject=\?/);
+  assert.match(query.text, /d\.portfolio_id/);
+  assert.deepEqual(query.values, ["owner-1", JSON.stringify([row])]);
+});
+
+test("deferred dividend reads bind the authenticated owner", async () => {
+  const { listOwnerDividends } =
+    await import("../../src/server/portfolio/dividend-queries.ts");
+  const query = listOwnerDividends(capture, "owner-1");
+
+  assert.match(query.text, /p\.kinde_subject=\?/);
+  assert.match(query.text, /p\.id=d\.portfolio_id/);
+  assert.deepEqual(query.values, ["owner-1"]);
+});

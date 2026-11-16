@@ -35,7 +35,8 @@
     "db:import-fyers-symbols": "node scripts/import-fyers-symbols.mjs",
     "db:migrate:012": "node scripts/migrate-012.mjs",
     "db:migrate:013": "node scripts/migrate-013.mjs",
-    "db:migrate:014": "node scripts/migrate-014.mjs"
+    "db:migrate:014": "node scripts/migrate-014.mjs",
+    "db:migrate:015": "node scripts/migrate-015.mjs"
   },
   "keywords": [],
   "author": "",
@@ -48,6 +49,7 @@
     "lossless-json": "^4.3.3",
     "lucide-react": "^1.66.0",
     "next": "^16.4.4",
+    "pdfjs-dist": "^6.5.438",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "recharts": "^3.10.1"

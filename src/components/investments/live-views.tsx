@@ -745,7 +745,7 @@ export function LiveViews({
           className="trade-primary"
           onClick={() => setModal({ type: "BUY" })}
         >
-          Record purchase
+          Record Purchase
         </button>
       </header>
       {view !== "dashboard" && data.chargesMissing && (
