@@ -111,6 +111,27 @@ test("debt row records interest and details retain its date", async ({
   await expect(page.getByText("₹20.00")).toBeVisible();
 });
 
+test("mutual fund entry searches the catalog and supports manual names", async ({
+  mount,
+  page,
+}) => {
+  await mount(
+    <ManualAssetEntry
+      type="MUTUAL_FUND"
+      close={() => {}}
+      onPendingChange={() => {}}
+    />,
+  );
+
+  const input = page.getByLabel("Fund name");
+
+  await input.fill("EXAMPLE");
+  await page.getByRole("button", { name: /EXAMPLE · BSE/ }).click();
+  await expect(input).toHaveValue("EXAMPLE FUND GROWTH");
+  await input.fill("Other unlisted fund");
+  await expect(input).toHaveValue("Other unlisted fund");
+});
+
 test("mutual fund CSV can be reviewed and edited before import", async ({
   mount,
   page,

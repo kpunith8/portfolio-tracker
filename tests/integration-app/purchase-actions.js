@@ -2,6 +2,13 @@
 
 const symbols = [
   {
+    symbol: "FUNDABC",
+    exchange: "NSE",
+    name: "EXAMPLE FUND GROWTH",
+    series: "EQ",
+    fyersSymbol: "NSE:FUNDABC-EQ",
+  },
+  {
     symbol: "TEST",
     exchange: "NSE",
     name: "Test Limited",

@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChoiceMenu } from "../ui/choice-menu";
+import { SymbolSearch } from "./symbol-search";
 import { parseCsvRecords } from "../../domain/purchase-csv";
 import {
   debtInvestmentNames,
@@ -152,12 +153,13 @@ export function ManualAssetEntry({
           <div className="manual-name-label">
             <span>{fund ? "Fund name" : "Investment name"}</span>
             {fund ? (
-              <input
-                required
-                maxLength={200}
-                aria-label="Fund name"
+              <SymbolSearch
+                mutualFund
+                label="Fund name"
                 value={row.name}
-                onChange={(e) => update({ name: e.target.value })}
+                onChange={(name, selected) =>
+                  update({ name: selected?.name ?? name })
+                }
               />
             ) : (
               <ChoiceMenu

@@ -151,3 +151,12 @@ test("CSV preview repairs invalid symbols and limits visible rows", async ({
   await page.getByRole("button", { name: "Add 10 purchases" }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });
+
+test("manual mutual fund entry searches the catalog", async ({ page }) => {
+  await page.goto("/dashboard?view=portfolio");
+  await page.getByRole("button", { name: "Record Purchase" }).click();
+  await page.getByLabel("Mutual fund", { exact: true }).check();
+  await page.getByLabel("Fund name").fill("FUNDABC");
+  await page.getByRole("button", { name: /FUNDABC · NSE/ }).click();
+  await expect(page.getByLabel("Fund name")).toHaveValue("EXAMPLE FUND GROWTH");
+});
