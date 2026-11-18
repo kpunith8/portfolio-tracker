@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronDown } from "lucide-react";
+import { ChoiceMenu } from "../ui/choice-menu";
 import { parseCsvRecords } from "../../domain/purchase-csv";
 import {
   debtInvestmentNames,
@@ -160,39 +160,17 @@ export function ManualAssetEntry({
                 onChange={(e) => update({ name: e.target.value })}
               />
             ) : (
-              <details
-                className="investment-select"
-                ref={investmentMenu}
-                onKeyDown={(event) => {
-                  if (event.key === "Escape") {
-                    investmentMenu.current?.removeAttribute("open");
-                    investmentMenu.current?.querySelector("summary")?.focus();
-                  }
-                }}
-              >
-                <summary aria-label="Investment name">
-                  {row.name || "Select an investment"}
-                  <ChevronDown size={18} aria-hidden="true" />
-                </summary>
-                <div className="investment-select-options">
-                  {debtInvestmentNames.map((name) => (
-                    <button
-                      type="button"
-                      key={name}
-                      aria-pressed={row.name === name}
-                      onClick={() => {
-                        update({ name });
-                        investmentMenu.current?.removeAttribute("open");
-                        investmentMenu.current
-                          ?.querySelector("summary")
-                          ?.focus();
-                      }}
-                    >
-                      {name}
-                    </button>
-                  ))}
-                </div>
-              </details>
+              <ChoiceMenu
+                menuRef={investmentMenu}
+                label="Investment name"
+                value={row.name}
+                valueLabel={row.name || "Select an investment"}
+                options={debtInvestmentNames.map((name) => ({
+                  value: name,
+                  label: name,
+                }))}
+                onChange={(name) => update({ name })}
+              />
             )}
           </div>
           {fund && (

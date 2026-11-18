@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Decimal from "decimal.js";
 import { ChevronDown } from "lucide-react";
 import { ReportDetails } from "./report-details";
+import { ChoiceMenu } from "../ui/choice-menu";
 import { DividendReportLoader } from "./dividend-report";
 import { buildTaxReport, type SaleLot } from "../../domain/tax-report";
 
@@ -38,22 +39,6 @@ export function TaxReport({
   const [printYear, setPrintYear] = useState(report[0]?.year ?? 0);
   const dialog = useRef<HTMLDialogElement>(null);
   const yearMenu = useRef<HTMLDetailsElement>(null);
-
-  useEffect(() => {
-    function closeOnOutsideClick(event: PointerEvent) {
-      if (
-        yearMenu.current &&
-        !yearMenu.current.contains(event.target as Node)
-      ) {
-        yearMenu.current.open = false;
-      }
-    }
-
-    document.addEventListener("pointerdown", closeOnOutsideClick);
-
-    return () =>
-      document.removeEventListener("pointerdown", closeOnOutsideClick);
-  }, []);
 
   const selectedReport = report.find((year) => year.year === printYear);
 
@@ -370,46 +355,18 @@ export function TaxReport({
           <span id="tax-year-label" className="tax-year-label">
             Assessment year
           </span>
-          <details
-            className="investment-select tax-year-select"
-            ref={yearMenu}
-            onBlur={(event) => {
-              if (!event.currentTarget.contains(event.relatedTarget)) {
-                event.currentTarget.open = false;
-              }
-            }}
-            onKeyDown={(event) => {
-              if (event.key === "Escape" && yearMenu.current?.open) {
-                event.preventDefault();
-                event.stopPropagation();
-                yearMenu.current.open = false;
-                yearMenu.current.querySelector("summary")?.focus();
-              }
-            }}
-          >
-            <summary aria-labelledby="tax-year-label tax-year-value">
-              <span id="tax-year-value">
-                {ay(printYear)} · {fy(printYear)}
-              </span>
-              <ChevronDown size={18} aria-hidden="true" />
-            </summary>
-            <div className="investment-select-options">
-              {report.map((year) => (
-                <button
-                  type="button"
-                  key={year.year}
-                  aria-pressed={year.year === printYear}
-                  onClick={() => {
-                    setPrintYear(year.year);
-                    if (yearMenu.current) yearMenu.current.open = false;
-                    yearMenu.current?.querySelector("summary")?.focus();
-                  }}
-                >
-                  {ay(year.year)} · {fy(year.year)}
-                </button>
-              ))}
-            </div>
-          </details>
+          <ChoiceMenu
+            menuRef={yearMenu}
+            className="tax-year-select"
+            labelledBy="tax-year-label"
+            value={printYear}
+            valueLabel={`${ay(printYear)} · ${fy(printYear)}`}
+            options={report.map((item) => ({
+              value: item.year,
+              label: `${ay(item.year)} · ${fy(item.year)}`,
+            }))}
+            onChange={setPrintYear}
+          />
           <div className="tax-dialog-actions">
             <div className="trade-buttons">
               <button>Cancel</button>
