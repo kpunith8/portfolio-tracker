@@ -1,6 +1,15 @@
+/* Exact shared values: use these for established dashboard controls and text. */
+:root {
+  --control-primary: #286a49;
+  --control-ink: #253e31;
+  --control-border-subtle: #cad8cd;
+  --control-border: #a9baad;
+  --text-secondary: #51665a;
+}
+
 .app-shell {
   --app-bg: #f6f8f5;
-  --app-ink: #253e31;
+  --app-ink: var(--control-ink);
   --app-muted: #718178;
   --app-line: #e5ebe5;
   --app-green: #347b58;
@@ -936,7 +945,7 @@ td:nth-child(n + 3) {
 .sample-columns {
   padding: 14px 26px;
   background: #fafcf9;
-  color: #51665a;
+  color: var(--text-secondary);
   font-size: 14px;
 }
 .sample-holding {
@@ -1246,7 +1255,7 @@ td:nth-child(n + 3) {
 }
 .trade-primary {
   border: 0;
-  background: #286a49;
+  background: var(--control-primary);
   color: white;
   border-radius: 8px;
   padding: 12px 16px;
@@ -1259,7 +1268,7 @@ td:nth-child(n + 3) {
   border: 0;
   border-radius: 14px;
   padding: 25px;
-  color: #253e31;
+  color: var(--control-ink);
   box-shadow: 0 16px 50px #17281e33;
 }
 .trade-dialog::backdrop {
@@ -1303,9 +1312,9 @@ td:nth-child(n + 3) {
 .trade-form select {
   width: 100%;
   padding: 11px;
-  border: 1px solid #cad8cd;
+  border: 1px solid var(--control-border-subtle);
   border-radius: 7px;
-  color: #253e31;
+  color: var(--control-ink);
   background: white;
   font: inherit;
 }
@@ -1325,16 +1334,16 @@ td:nth-child(n + 3) {
 .trade-buttons button,
 .page-controls button {
   padding: 10px 14px;
-  border: 1px solid #cad8cd;
+  border: 1px solid var(--control-border-subtle);
   border-radius: 7px;
   background: white;
-  color: #253e31;
+  color: var(--control-ink);
   cursor: pointer;
 }
 .trade-buttons button[type="submit"] {
-  background: #286a49;
+  background: var(--control-primary);
   color: white;
-  border-color: #286a49;
+  border-color: var(--control-primary);
 }
 .trade-buttons button:disabled,
 .page-controls button:disabled {
@@ -1356,7 +1365,7 @@ td:nth-child(n + 3) {
   padding: 2px 0;
   border: 0;
   background: transparent;
-  color: #286a49;
+  color: var(--control-primary);
   font: inherit;
   font-size: 12px;
   text-decoration: underline;
@@ -1379,9 +1388,9 @@ td:nth-child(n + 3) {
 /* Shared application typography and controls */
 .app-shell {
   --app-ink: #203a2d;
-  --app-muted: #51665a;
+  --app-muted: var(--text-secondary);
   --app-green: #276c49;
-  --app-control-border: #a9baad;
+  --app-control-border: var(--control-border);
   font-size: 15px;
   line-height: 1.5;
 }
@@ -1403,7 +1412,7 @@ td:nth-child(n + 3) {
 .topline,
 .mobile-sign-out {
   font-size: 13px;
-  color: #51665a;
+  color: var(--text-secondary);
 }
 .side-link {
   color: #435c4d;
@@ -1423,7 +1432,7 @@ td:nth-child(n + 3) {
 .trade-dialog-header p,
 .trade-note,
 .trade-form small {
-  color: #51665a;
+  color: var(--text-secondary);
   font-size: 14px;
   line-height: 1.55;
 }
@@ -1460,7 +1469,7 @@ td:nth-child(n + 3) {
 .sample-cell small,
 .sample-lots th,
 .sample-transactions th {
-  color: #51665a;
+  color: var(--text-secondary);
 }
 .sample-lots td,
 .sample-transactions td {
@@ -1522,7 +1531,7 @@ td:nth-child(n + 3) {
 }
 .select-shell select:disabled {
   background: #f1f4f1;
-  color: #51665a;
+  color: var(--text-secondary);
   cursor: default;
   opacity: 1;
 }
@@ -1571,7 +1580,7 @@ td:nth-child(n + 3) {
 .sample-lots td button {
   min-height: 40px;
   padding: 8px 12px;
-  border: 1px solid #a9baad;
+  border: 1px solid var(--control-border);
   border-radius: 7px;
   background: #fff;
   color: #245d3d;
@@ -1603,7 +1612,7 @@ td:nth-child(n + 3) {
 }
 .sign-out,
 .mobile-sign-out {
-  color: #286a49;
+  color: var(--control-primary);
   font-weight: 600;
   text-decoration: underline;
   text-underline-offset: 0.2em;
@@ -1618,7 +1627,7 @@ td:nth-child(n + 3) {
   line-height: 1.3;
 }
 .sample-page > p {
-  color: #51665a;
+  color: var(--text-secondary);
 }
 @media (max-width: 700px) {
   .side-link {
@@ -1839,7 +1848,7 @@ td:nth-child(n + 3) {
   font-size: 13px;
 }
 .overview-metrics strong {
-  color: #253e31;
+  color: var(--control-ink);
   font-size: clamp(19px, 1.6vw, 24px);
   line-height: 1.2;
 }
@@ -1877,7 +1886,7 @@ td:nth-child(n + 3) {
 .detail-back {
   font-size: 14px;
   font-weight: 600;
-  color: #286a49;
+  color: var(--control-primary);
 }
 .holding-bars {
   display: grid;
@@ -2355,7 +2364,7 @@ td:nth-child(n + 3) {
 .history-refresh {
   border: 0;
   background: transparent;
-  color: #286a49;
+  color: var(--control-primary);
   font: inherit;
   font-weight: 600;
   text-decoration: underline;
@@ -2487,7 +2496,7 @@ td:nth-child(n + 3) {
 .live-market-table small {
   display: block;
   margin-top: 6px;
-  color: #51665a;
+  color: var(--text-secondary);
   font-size: 14px;
   font-weight: 500;
   line-height: 1.4;
@@ -2522,8 +2531,8 @@ td:nth-child(n + 3) {
   cursor: pointer;
 }
 .purchase-tabs button[aria-selected="true"] {
-  color: #286a49;
-  border-bottom-color: #286a49;
+  color: var(--control-primary);
+  border-bottom-color: var(--control-primary);
   font-weight: 700;
 }
 .purchase-dialog .trade-dialog-header h2 {
@@ -2630,7 +2639,7 @@ td:nth-child(n + 3) {
   font-size: 12px;
 }
 .purchase-pagination button {
-  border: 1px solid #cad8cd;
+  border: 1px solid var(--control-border-subtle);
   border-radius: 7px;
   background: white;
   padding: 7px 10px;
@@ -2649,7 +2658,7 @@ td:nth-child(n + 3) {
   max-height: 200px;
   overflow: auto;
   background: white;
-  border: 1px solid #cad8cd;
+  border: 1px solid var(--control-border-subtle);
   border-radius: 7px;
   box-shadow: 0 6px 18px #17281e22;
 }
@@ -2661,7 +2670,7 @@ td:nth-child(n + 3) {
   border: 0;
   padding: 8px 9px;
   background: white;
-  color: #253e31;
+  color: var(--control-ink);
   font: inherit;
   cursor: pointer;
 }
@@ -2692,7 +2701,7 @@ td:nth-child(n + 3) {
   min-width: 0;
 }
 .purchase-dialog .trade-form > a {
-  color: #286a49;
+  color: var(--control-primary);
   font-size: 13px;
   font-weight: 700;
 }
@@ -2932,7 +2941,7 @@ td:nth-child(n + 3) {
   display: inline-flex;
   align-items: center;
   gap: 1.25rem;
-  color: #286a49;
+  color: var(--control-primary);
   font-weight: 600;
   text-decoration: underline;
   text-underline-offset: 0.2em;
@@ -3087,7 +3096,7 @@ td:nth-child(n + 3) {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    border-bottom: 2px solid #286a49;
+    border-bottom: 2px solid var(--control-primary);
     padding-bottom: 12pt;
     margin-bottom: 18pt;
   }
@@ -3138,7 +3147,7 @@ td:nth-child(n + 3) {
   }
   .tax-print-report tfoot th,
   .tax-print-report tfoot td {
-    border-top: 1px solid #286a49;
+    border-top: 1px solid var(--control-primary);
   }
   .tax-print-report tr {
     break-inside: avoid;
@@ -3214,7 +3223,7 @@ td:nth-child(n + 3) {
 }
 .dividend-report .tax-table-wrap td small {
   display: block;
-  color: #51665a;
+  color: var(--text-secondary);
   margin-top: 0.2rem;
 }
 .dividend-print {
@@ -3299,11 +3308,11 @@ td:nth-child(n + 3) {
 .dividend-report .tax-period summary .tax-view-details {
   display: inline-flex;
   flex-direction: row;
-  color: #286a49;
+  color: var(--control-primary);
   font-size: inherit;
 }
 .dividend-view input {
-  accent-color: #286a49;
+  accent-color: var(--control-primary);
 }
 
 .tax-report {
@@ -3317,7 +3326,7 @@ td:nth-child(n + 3) {
   font-size: 14px;
 }
 .tax-table-wrap td {
-  color: #253e31;
+  color: var(--control-ink);
   font-weight: 500;
 }
 .tax-table-wrap td small {
@@ -3335,10 +3344,10 @@ td:nth-child(n + 3) {
 .dividend-import-button {
   min-height: 44px;
   padding: 10px 14px;
-  border: 1px solid #cad8cd;
+  border: 1px solid var(--control-border-subtle);
   border-radius: 7px;
   background: white;
-  color: #253e31;
+  color: var(--control-ink);
   font: inherit;
   font-size: 14px;
   font-weight: 600;

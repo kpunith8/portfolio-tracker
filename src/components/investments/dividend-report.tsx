@@ -10,6 +10,7 @@ import {
 } from "react";
 import Decimal from "decimal.js";
 import { ChevronDown, X } from "lucide-react";
+import { ChoiceMenu } from "../ui/choice-menu";
 import { displayCompanyName } from "../../domain/company-name";
 import {
   dividendReport,
@@ -212,17 +213,6 @@ export function DividendReport({
   const importDialog = useRef<HTMLDialogElement>(null);
   const picker = useRef<HTMLDetailsElement>(null);
   const selected = report.years.find((item) => item.year === year);
-
-  useEffect(() => {
-    function dismiss(event: PointerEvent) {
-      if (picker.current && !picker.current.contains(event.target as Node))
-        picker.current.open = false;
-    }
-
-    document.addEventListener("pointerdown", dismiss);
-
-    return () => document.removeEventListener("pointerdown", dismiss);
-  }, []);
 
   function previewFile(form: FormData) {
     setMessage("");
@@ -586,43 +576,18 @@ export function DividendReport({
           <span id="dividend-year-label" className="tax-year-label">
             Assessment year
           </span>
-          <details
-            className="investment-select tax-year-select"
-            ref={picker}
-            onBlur={(event) => {
-              if (!event.currentTarget.contains(event.relatedTarget))
-                event.currentTarget.open = false;
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Escape" && picker.current?.open) {
-                e.preventDefault();
-                e.stopPropagation();
-                picker.current.open = false;
-                picker.current.querySelector("summary")?.focus();
-              }
-            }}
-          >
-            <summary aria-labelledby="dividend-year-label dividend-year-value">
-              <span id="dividend-year-value">{yearLabel(year)}</span>
-              <ChevronDown size={18} aria-hidden="true" />
-            </summary>
-            <div className="investment-select-options">
-              {report.years.map((item) => (
-                <button
-                  type="button"
-                  key={item.year}
-                  aria-pressed={item.year === year}
-                  onClick={() => {
-                    setYear(item.year);
-                    if (picker.current) picker.current.open = false;
-                    picker.current?.querySelector("summary")?.focus();
-                  }}
-                >
-                  {yearLabel(item.year)}
-                </button>
-              ))}
-            </div>
-          </details>
+          <ChoiceMenu
+            menuRef={picker}
+            className="tax-year-select"
+            labelledBy="dividend-year-label"
+            value={year}
+            valueLabel={yearLabel(year)}
+            options={report.years.map((item) => ({
+              value: item.year,
+              label: yearLabel(item.year),
+            }))}
+            onChange={setYear}
+          />
           <div className="tax-dialog-actions">
             <div className="trade-buttons">
               <button>Cancel</button>
